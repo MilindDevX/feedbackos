@@ -91,7 +91,7 @@ const zendeskWorker = new Worker<ZendeskSyncPayload>(
             externalId: mapped.externalId,
             submittedAt: mapped.submittedAt,
             status: 'PENDING',
-            metadata: mapped.metadata,
+            metadata: mapped.metadata as Record<string, string>,
           },
         })
         jobsToEnqueue.push({ feedbackItemId: item.id, organizationId })

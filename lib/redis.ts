@@ -34,13 +34,19 @@ export const redis =
 
 if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis
 
+// Returns plain connection options — avoids ioredis version conflicts with BullMQ's bundled ioredis
 export function createBullMQConnection() {
-  // ── AUDIT FIX: Validate env at startup, TLS in production ──
   const url = process.env.REDIS_URL || 'redis://localhost:6379'
   const isTls = url.startsWith('rediss://')
-  return new Redis(url, {
-    maxRetriesPerRequest: null,
+  // Parse URL into host/port/password for BullMQ's internal ioredis
+  const parsed = new URL(url.replace(/^rediss?:\/\//, (m) => m === 'rediss://' ? 'https://' : 'http://'))
+  return {
+    host: parsed.hostname,
+    port: parseInt(parsed.port || '6379', 10),
+    password: parsed.password || undefined,
+    username: parsed.username || undefined,
+    maxRetriesPerRequest: null as unknown as null,
     enableReadyCheck: false,
     ...(isTls && { tls: {} }),
-  })
+  }
 }

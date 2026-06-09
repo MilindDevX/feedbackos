@@ -13,7 +13,7 @@ export async function rateLimit(
   req: NextRequest,
   key: string,
   limit: number,
-  windowSecs: number
+  windowSecs: number = 60
 ): Promise<NextResponse | null> {
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||

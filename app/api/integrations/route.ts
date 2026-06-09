@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 const createIntegrationSchema = z.object({
   type: z.nativeEnum(SourceType),
   displayName: z.string().min(1).max(100),
-  config: z.record(z.string()),
+  config: z.record(z.string(), z.string()),
 })
 
 export async function POST(req: NextRequest) {

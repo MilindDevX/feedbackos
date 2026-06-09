@@ -5,4 +5,4 @@ process.env.OPENROUTER_API_KEY = 'sk-test-key'
 process.env.NEXTAUTH_URL = 'http://localhost:3000'
 process.env.NEXTAUTH_SECRET = 'test-secret-that-is-at-least-32-characters-long!'
 process.env.ENCRYPTION_KEY = '0000000000000000000000000000000000000000000000000000000000000000'
-process.env.NODE_ENV = 'test'
+// NODE_ENV is managed by Jest automatically; do not assign here

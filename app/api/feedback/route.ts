@@ -5,7 +5,7 @@ import { db } from '@/lib/db'
 import { getClassifyQueue } from '@/lib/queue'
 import { rateLimit } from '@/lib/rate-limit'
 import { successResponse, errorResponse, unauthorized, validationError, serverError } from '@/lib/api-response'
-import { SourceType, FeedbackStatus, Theme, Sentiment } from '@prisma/client'
+import { SourceType, FeedbackStatus, Theme, Sentiment, Prisma } from '@prisma/client'
 import type { SessionUser } from '@/auth'
 
 // ─── GET /api/feedback — Paginated list with filters ─────────────────────────
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   const { cursor, page, pageSize, status, theme, sentiment, source, productArea, dateFrom, dateTo, search } = parsed.data
 
-  const where: Parameters<typeof db.feedbackItem.findMany>[0]['where'] = {
+  const where: Prisma.FeedbackItemWhereInput = {
     organizationId: user.organizationId,
     ...(status && { status }),
     ...(source && { source }),
@@ -137,12 +137,12 @@ const ingestSchema = z.object({
   submitted_at: z.string().optional(),
   submitter_email: z.string().email().optional(),
   submitter_name: z.string().max(200).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 export async function POST(req: NextRequest) {
   // ── AUDIT FIX: Rate limit — 30 ingest requests per minute per IP ──
-  const rateLimited = await rateLimit(req, 'feedback-ingest', 30, 60)
+  const rateLimited = await rateLimit(req, 'feedback-ingest', 30)
   if (rateLimited) return rateLimited
 
   const session = await auth()
@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
         submitterEmail: submitter_email,
         submitterName: submitter_name,
         status: 'PENDING',
-        metadata: metadata || {},
+        metadata: (metadata || {}) as Record<string, string>,
       },
     })
 

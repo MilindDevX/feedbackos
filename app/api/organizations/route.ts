@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       await tx.organizationMember.create({
         data: {
           organizationId: newOrg.id,
-          userId: session.user!.id,
+          userId: session.user!.id!,
           role: 'OWNER',
         },
       })

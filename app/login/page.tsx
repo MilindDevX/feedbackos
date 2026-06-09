@@ -2,7 +2,7 @@
 
 import { signIn } from 'next-auth/react'
 import { useState } from 'react'
-import { Mail, Chrome, Zap, BarChart3, Tag, ArrowRight, Loader2 } from 'lucide-react'
+import { Mail, Globe, Zap, BarChart3, Tag, ArrowRight, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
