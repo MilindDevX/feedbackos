@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: oklch(97% 0.02 260);
+  --color-brand-100: oklch(93% 0.05 260);
+  --color-brand-200: oklch(85% 0.09 260);
+  --color-brand-300: oklch(75% 0.13 260);
+  --color-brand-400: oklch(63% 0.18 260);
+  --color-brand-500: oklch(55% 0.22 260);
+  --color-brand-600: oklch(47% 0.22 260);
+  --color-brand-700: oklch(39% 0.19 260);
+  --color-brand-800: oklch(30% 0.14 260);
+  --color-brand-900: oklch(22% 0.10 260);
+  --color-brand-950: oklch(15% 0.06 260);
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-gray-950 text-gray-100;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(35% 0 0);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(45% 0 0);
+}
+
+/* Skeleton loader animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    oklch(20% 0 0) 25%,
+    oklch(25% 0 0) 50%,
+    oklch(20% 0 0) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* Glass card */
+.glass-card {
+  background: oklch(17% 0.01 260 / 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid oklch(30% 0.02 260 / 0.5);
+  border-radius: 12px;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, oklch(75% 0.18 260), oklch(65% 0.22 300));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Theme badge colors */
+.badge-bug { @apply bg-red-500/15 text-red-400 ring-1 ring-red-500/30; }
+.badge-feature_request { @apply bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30; }
+.badge-pricing { @apply bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30; }
+.badge-onboarding { @apply bg-purple-500/15 text-purple-400 ring-1 ring-purple-500/30; }
+.badge-performance { @apply bg-orange-500/15 text-orange-400 ring-1 ring-orange-500/30; }
+.badge-praise { @apply bg-green-500/15 text-green-400 ring-1 ring-green-500/30; }
+.badge-other { @apply bg-gray-500/15 text-gray-400 ring-1 ring-gray-500/30; }
+
+/* Sentiment badge colors */
+.badge-positive { @apply bg-green-500/15 text-green-400 ring-1 ring-green-500/30; }
+.badge-negative { @apply bg-red-500/15 text-red-400 ring-1 ring-red-500/30; }
+.badge-neutral { @apply bg-gray-500/15 text-gray-400 ring-1 ring-gray-500/30; }
+.badge-mixed { @apply bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30; }
+
+/* Status badge */
+.badge-classified { @apply bg-green-500/15 text-green-400 ring-1 ring-green-500/30; }
+.badge-needs_review { @apply bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30; }
+.badge-pending { @apply bg-gray-500/15 text-gray-400 ring-1 ring-gray-500/30; }
+.badge-reviewed { @apply bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30; }
+.badge-classifying { @apply bg-purple-500/15 text-purple-400 ring-1 ring-purple-500/30; }
+.badge-classification_error { @apply bg-red-500/15 text-red-400 ring-1 ring-red-500/30; }
+
+/* Slide-over animation */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.slide-over {
+  animation: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid oklch(63% 0.18 260);
+  outline-offset: 2px;
+}
