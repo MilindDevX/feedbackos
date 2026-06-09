@@ -1,0 +1,328 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────
+// IDENTITY & ACCESS
+// ─────────────────────────────────────────────────────
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members          OrganizationMember[]
+  feedbackItems    FeedbackItem[]
+  ingestionSources IngestionSource[]
+  productAreas     ProductArea[]
+  tags             Tag[]
+  alertRules       AlertRule[]
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  memberships   OrganizationMember[]
+  reviewActions ReviewAction[]
+}
+
+model OrganizationMember {
+  id             String     @id @default(cuid())
+  organizationId String
+  userId         String
+  role           MemberRole @default(MEMBER)
+  joinedAt       DateTime   @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+// NextAuth required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─────────────────────────────────────────────────────
+// FEEDBACK CORE
+// ─────────────────────────────────────────────────────
+
+model FeedbackItem {
+  id             String         @id @default(cuid())
+  organizationId String
+  sourceId       String?
+  externalId     String?
+  source         SourceType
+  rawText        String         @db.Text
+  submittedAt    DateTime
+  ingestedAt     DateTime       @default(now())
+  status         FeedbackStatus @default(PENDING)
+  submitterEmail String?
+  submitterName  String?
+  metadata       Json?
+
+  organization      Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ingestionSource   IngestionSource? @relation(fields: [sourceId], references: [id])
+  classification    Classification?
+  feedbackTags      FeedbackTag[]
+  reviewActions     ReviewAction[]
+  classificationLog ClassificationLog?
+
+  @@unique([organizationId, source, externalId])
+  @@index([organizationId, status])
+  @@index([organizationId, submittedAt(sort: Desc)])
+  @@index([organizationId, source])
+  @@map("feedback_items")
+}
+
+enum SourceType {
+  ZENDESK
+  INTERCOM
+  CSV
+  MANUAL
+  API
+}
+
+enum FeedbackStatus {
+  PENDING
+  CLASSIFYING
+  CLASSIFIED
+  NEEDS_REVIEW
+  REVIEWED
+  CLASSIFICATION_ERROR
+}
+
+model Classification {
+  id                  String    @id @default(cuid())
+  feedbackId          String    @unique
+  theme               Theme
+  sentiment           Sentiment
+  productArea         String?
+  confidenceScore     Float
+  summary             String    @db.Text
+  requiresHumanReview Boolean   @default(false)
+  modelUsed           String
+  promptTokens        Int
+  completionTokens    Int
+  classifiedAt        DateTime  @default(now())
+  rawLlmResponse      Json
+
+  feedbackItem FeedbackItem @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([theme])
+  @@index([sentiment])
+  @@index([classifiedAt])
+  @@index([confidenceScore])
+}
+
+model ClassificationLog {
+  id               String   @id @default(cuid())
+  feedbackId       String   @unique
+  modelUsed        String
+  promptTokens     Int
+  completionTokens Int
+  latencyMs        Int
+  success          Boolean
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+
+  feedbackItem FeedbackItem @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([success])
+}
+
+enum Theme {
+  BUG
+  FEATURE_REQUEST
+  PRICING
+  ONBOARDING
+  PERFORMANCE
+  PRAISE
+  OTHER
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  MIXED
+}
+
+model ProductArea {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+}
+
+// ─────────────────────────────────────────────────────
+// TAGS
+// ─────────────────────────────────────────────────────
+
+model Tag {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  color          String   @default("#6366f1")
+  isSystemTag    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  feedbackTags FeedbackTag[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model FeedbackTag {
+  feedbackId String
+  tagId      String
+  addedBy    String?
+  addedAt    DateTime @default(now())
+
+  feedback FeedbackItem @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  tag      Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([feedbackId, tagId])
+  @@index([tagId])
+}
+
+// ─────────────────────────────────────────────────────
+// INTEGRATIONS
+// ─────────────────────────────────────────────────────
+
+model IngestionSource {
+  id              String     @id @default(cuid())
+  organizationId  String
+  type            SourceType
+  displayName     String
+  configEncrypted String     @db.Text
+  isActive        Boolean    @default(true)
+  lastSyncedAt    DateTime?
+  lastSyncStatus  String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  feedbackItems FeedbackItem[]
+
+  @@index([organizationId])
+}
+
+// ─────────────────────────────────────────────────────
+// HUMAN REVIEW
+// ─────────────────────────────────────────────────────
+
+model ReviewAction {
+  id                String           @id @default(cuid())
+  feedbackId        String
+  reviewerId        String
+  action            ReviewActionType
+  previousTheme     Theme?
+  newTheme          Theme?
+  previousSentiment Sentiment?
+  newSentiment      Sentiment?
+  note              String?          @db.Text
+  reviewedAt        DateTime         @default(now())
+
+  feedbackItem FeedbackItem @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  reviewer     User         @relation(fields: [reviewerId], references: [id])
+
+  @@index([feedbackId])
+  @@index([reviewerId])
+}
+
+enum ReviewActionType {
+  ACCEPTED
+  OVERRIDDEN
+  RECLASSIFIED
+}
+
+// ─────────────────────────────────────────────────────
+// ALERTING
+// ─────────────────────────────────────────────────────
+
+model AlertRule {
+  id              String     @id @default(cuid())
+  organizationId  String
+  name            String
+  theme           Theme?
+  sentimentFilter Sentiment?
+  windowHours     Int        @default(24)
+  threshold       Int
+  emailRecipients String[]
+  isActive        Boolean    @default(true)
+  lastFiredAt     DateTime?
+  createdAt       DateTime   @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
