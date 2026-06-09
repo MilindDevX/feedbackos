@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto'
 
 const BASE_URL = 'http://localhost:3000'
 const DEMO_EMAIL = 'demo@feedbackos.app'
-const ARTIFACT_DIR = '/Users/milindbansal/.gemini/antigravity-ide/brain/281bf154-de1b-4443-991b-f2f56fc1c5ab'
+const ARTIFACT_DIR = process.cwd()
 
 async function runDemo() {
   const db = new PrismaClient()

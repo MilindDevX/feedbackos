@@ -6,7 +6,7 @@
 
 ## 🚀 Live Demo
 
-**Demo URL:** `http://localhost:3000` (run locally, see setup below)
+**Demo URL:** [https://feedbackos.vercel.app](https://feedbackos.vercel.app)
 **Demo Login:** `demo@feedbackos.app` (email magic link — no Google account required)
 
 The demo ships with **48 pre-classified feedback items** across all 7 themes and 4 sentiment categories, ready to explore.
@@ -37,8 +37,8 @@ The demo ships with **48 pre-classified feedback items** across all 7 themes and
               │  jobs/worker.ts               │
               │  ┌─────────────────────────┐  │
               │  │  classifyFeedback()     │  │
-              │  │  qwen/qwen3-coder:free  │  │
-              │  │  via OpenRouter API     │  │
+              │  │  llama-3.1-8b-instant   │  │
+              │  │  via Groq API           │  │
               │  └─────────────────────────┘  │
               └───────────────┬───────────────┘
                               │ persist
@@ -50,7 +50,7 @@ The demo ships with **48 pre-classified feedback items** across all 7 themes and
 
 **Key design decisions:**
 - **Two-process architecture:** Next.js (HTTP) and BullMQ Worker run as separate processes so AI classification never blocks API response times.
-- **OpenRouter for AI:** Routes through OpenRouter to `qwen/qwen3-coder:free`, keeping inference costs at zero during development.
+- **Groq for AI:** Routes through Groq to `llama-3.1-8b-instant` for ultra-low latency inference.
 - **Redis caching:** Dashboard summary cached for 5 minutes, protecting Postgres from repeated aggregation queries.
 - **AES-256-GCM encryption:** All integration credentials (Zendesk API tokens) are encrypted at rest before storage.
 
@@ -86,7 +86,7 @@ The classified item immediately appears in the feedback table with the correct b
 - Node.js 18+
 - PostgreSQL 14+ (local or cloud)
 - Redis 6+ (local or Upstash)
-- OpenRouter API key (free at [openrouter.ai](https://openrouter.ai))
+- Groq API key (free at [groq.com](https://groq.com))
 
 ### 1. Clone and install
 ```bash
@@ -105,7 +105,7 @@ Edit `.env` and fill in:
 |---|---|
 | `DATABASE_URL` | Local Postgres or Neon/Supabase free tier |
 | `REDIS_URL` | Local Redis or Upstash free tier (`rediss://` in prod) |
-| `OPENROUTER_API_KEY` | [openrouter.ai/keys](https://openrouter.ai/keys) |
+| `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) |
 | `NEXTAUTH_SECRET` | `openssl rand -base64 32` |
 | `ENCRYPTION_KEY` | `openssl rand -hex 32` |
 
@@ -156,8 +156,12 @@ npm run test:e2e
 
 ---
 
-## 🚀 Deployment (Railway / Render)
+## 🚀 Deployment (Vercel & Render)
 
+**Frontend & API (Vercel)**
+Deploy the repository directly to Vercel. Ensure all environment variables are set in your Vercel project settings.
+
+**Background Worker (Render)**
 Set the **build command** to:
 ```bash
 npm run deploy:build
