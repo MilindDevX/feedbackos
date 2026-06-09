@@ -18,10 +18,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         secure: true,
         auth: {
           user: 'resend',
-          pass: process.env.RESEND_API_KEY,
+          pass: process.env.RESEND_API_KEY || 'missing-key',
         },
       },
       from: process.env.EMAIL_FROM || 'noreply@feedbackos.app',
+      sendVerificationRequest({ identifier, url, provider }) {
+        if (process.env.NODE_ENV === 'development' || !process.env.RESEND_API_KEY) {
+          console.log(`\n======================================================\n`)
+          console.log(`🔐 MAGIC LINK FOR ${identifier}:`)
+          console.log(`${url}`)
+          console.log(`\n======================================================\n`)
+          return
+        }
+        
+        // Otherwise, use the default Nodemailer transport
+        // We import nodemailer dynamically here to avoid cluttering the global scope
+        const { createTransport } = require('nodemailer')
+        const transport = createTransport(provider.server)
+        return transport.sendMail({
+          to: identifier,
+          from: provider.from,
+          subject: `Sign in to FeedbackOS`,
+          text: `Sign in by clicking here: ${url}`,
+          html: `<p>Sign in to FeedbackOS by clicking the link below:</p><p><a href="${url}">Sign in</a></p>`
+        })
+      }
     }),
   ],
   pages: {
