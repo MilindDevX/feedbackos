@@ -23,7 +23,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       from: process.env.EMAIL_FROM || 'noreply@feedbackos.app',
       sendVerificationRequest({ identifier, url, provider }) {
-        const pass = provider.server.auth?.pass
+        const pass = process.env.EMAIL_SERVER_PASSWORD || process.env.RESEND_API_KEY
         const isPlaceholderKey = !pass || pass === 're_placeholder' || pass === 'missing-key'
         
         if (isPlaceholderKey) {
