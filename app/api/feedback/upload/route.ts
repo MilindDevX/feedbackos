@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     if (file.size > MAX_FILE_SIZE_BYTES) {
       return validationError(`File exceeds ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB limit`)
     }
-    if (!file.name.toLowerCase().endsWith('.csv') || (file.type && !file.type.includes('csv') && file.type !== 'text/plain')) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
       return validationError('Only CSV files are accepted')
     }
 
