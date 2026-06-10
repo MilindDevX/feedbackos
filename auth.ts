@@ -13,17 +13,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
     EmailProvider({
       server: {
-        host: 'smtp.resend.com',
-        port: 465,
+        host: process.env.EMAIL_SERVER_HOST || 'smtp.resend.com',
+        port: Number(process.env.EMAIL_SERVER_PORT) || 465,
         secure: true,
         auth: {
-          user: 'resend',
-          pass: process.env.RESEND_API_KEY || 'missing-key',
+          user: process.env.EMAIL_SERVER_USER || 'resend',
+          pass: process.env.EMAIL_SERVER_PASSWORD || process.env.RESEND_API_KEY || 'missing-key',
         },
       },
       from: process.env.EMAIL_FROM || 'noreply@feedbackos.app',
       sendVerificationRequest({ identifier, url, provider }) {
-        const isPlaceholderKey = !process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_placeholder'
+        const pass = provider.server.auth?.pass
+        const isPlaceholderKey = !pass || pass === 're_placeholder' || pass === 'missing-key'
+        
         if (isPlaceholderKey) {
           console.log(`\n======================================================\n`)
           console.log(`🔐 MAGIC LINK FOR ${identifier}:`)
