@@ -23,7 +23,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       from: process.env.EMAIL_FROM || 'noreply@feedbackos.app',
       sendVerificationRequest({ identifier, url, provider }) {
-        if (process.env.NODE_ENV === 'development' || !process.env.RESEND_API_KEY) {
+        const isPlaceholderKey = !process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_placeholder'
+        if (isPlaceholderKey) {
           console.log(`\n======================================================\n`)
           console.log(`🔐 MAGIC LINK FOR ${identifier}:`)
           console.log(`${url}`)
