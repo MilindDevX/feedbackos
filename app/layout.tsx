@@ -15,7 +15,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const session = await auth()
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans antialiased bg-gray-950 text-gray-100`}>
+      <body suppressHydrationWarning className={`${inter.variable} font-sans antialiased bg-gray-950 text-gray-100`}>
         <SessionProvider session={session}>
           {children}
         </SessionProvider>

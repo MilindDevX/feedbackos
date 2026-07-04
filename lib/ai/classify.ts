@@ -4,7 +4,7 @@ import { buildSystemPrompt, buildUserPrompt } from './prompts'
 import { db } from '../db'
 import { FeedbackStatus, Theme, Sentiment } from '@prisma/client'
 
-const MODEL = process.env.GROQ_API_KEY ? 'llama-3.1-8b-instant' : 'qwen/qwen3-coder:free'
+const MODEL = process.env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : 'qwen/qwen3-coder:free'
 
 export interface ClassificationResult {
   output: ClassificationOutput

@@ -37,7 +37,7 @@ The demo ships with **48 pre-classified feedback items** across all 7 themes and
               │  jobs/worker.ts               │
               │  ┌─────────────────────────┐  │
               │  │  classifyFeedback()     │  │
-              │  │  llama-3.1-8b-instant   │  │
+              │  │  llama-3.3-70b-versatile   │  │
               │  │  via Groq API           │  │
               │  └─────────────────────────┘  │
               └───────────────┬───────────────┘
@@ -50,7 +50,7 @@ The demo ships with **48 pre-classified feedback items** across all 7 themes and
 
 **Key design decisions:**
 - **Two-process architecture:** Next.js (HTTP) and BullMQ Worker run as separate processes so AI classification never blocks API response times.
-- **Groq for AI:** Routes through Groq to `llama-3.1-8b-instant` for ultra-low latency inference.
+- **Groq for AI:** Routes through Groq to `llama-3.3-70b-versatile` for ultra-low latency inference.
 - **Redis caching:** Dashboard summary cached for 5 minutes, protecting Postgres from repeated aggregation queries.
 - **AES-256-GCM encryption:** All integration credentials (Zendesk API tokens) are encrypted at rest before storage.
 
