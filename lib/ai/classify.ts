@@ -4,7 +4,7 @@ import { buildSystemPrompt, buildUserPrompt } from './prompts'
 import { db } from '../db'
 import { FeedbackStatus, Theme, Sentiment } from '@prisma/client'
 
-const MODEL = process.env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : 'qwen/qwen3-coder:free'
+const MODEL = process.env.GROQ_API_KEY ? 'openai/gpt-oss-120b' : 'qwen/qwen3-coder:free'
 
 export interface ClassificationResult {
   output: ClassificationOutput
@@ -48,11 +48,15 @@ export async function classifyFeedback(
 
   let completion
   try {
+    // reasoning_effort only applies to the Groq-hosted reasoning model;
+    // sending it to other providers (e.g. OpenRouter) can error out
+    const useGroq = Boolean(process.env.GROQ_API_KEY)
     completion = await openai.chat.completions.create({
       model: MODEL,
       temperature: 0,
       max_tokens: 512,
       response_format: { type: 'json_object' },
+      ...(useGroq && { reasoning_effort: process.env.GROQ_REASONING_EFFORT ?? 'low' }),
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -71,7 +75,7 @@ export async function classifyFeedback(
       }
       return {
         output: fallback,
-        modelUsed: 'qwen3-coder:free (mock)',
+        modelUsed: `${MODEL} (fallback mock)`,
         promptTokens: 0,
         completionTokens: 0,
         latencyMs: Date.now() - startTime,
