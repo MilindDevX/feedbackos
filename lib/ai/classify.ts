@@ -1,4 +1,5 @@
 import { openai } from './client'
+import type { ChatCompletionCreateParamsNonStreaming } from 'openai/resources/chat/completions'
 import { ClassificationOutput, ClassificationOutputSchema, themeToEnum, sentimentToEnum } from './schemas'
 import { buildSystemPrompt, buildUserPrompt } from './prompts'
 import { db } from '../db'
@@ -51,17 +52,25 @@ export async function classifyFeedback(
     // reasoning_effort only applies to the Groq-hosted reasoning model;
     // sending it to other providers (e.g. OpenRouter) can error out
     const useGroq = Boolean(process.env.GROQ_API_KEY)
-    completion = await openai.chat.completions.create({
+    const baseParams: ChatCompletionCreateParamsNonStreaming = {
       model: MODEL,
       temperature: 0,
       max_tokens: 512,
       response_format: { type: 'json_object' },
-      ...(useGroq && { reasoning_effort: process.env.GROQ_REASONING_EFFORT ?? 'low' }),
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-    })
+    }
+    // the API only accepts a fixed set of effort levels, so anything else falls back to 'low'
+    const reasoningEfforts = ['minimal', 'low', 'medium', 'high'] as const
+    type ReasoningEffortLevel = (typeof reasoningEfforts)[number]
+    const rawEffort = process.env.GROQ_REASONING_EFFORT as ReasoningEffortLevel | undefined
+    const reasoningEffort: ReasoningEffortLevel =
+      rawEffort && (reasoningEfforts as readonly string[]).includes(rawEffort) ? rawEffort : 'low'
+    completion = await openai.chat.completions.create(
+      useGroq ? { ...baseParams, reasoning_effort: reasoningEffort } : baseParams
+    )
   } catch (error: any) {
     if (error?.status === 429 || error?.response?.status === 429 || error?.message?.includes('429')) {
       console.log('[Classify] Rate limit hit, using fallback mock response...')
