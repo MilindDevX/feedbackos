@@ -311,7 +311,7 @@ async function main() {
         confidenceScore: confidence,
         summary: item.summary,
         requiresHumanReview: confidence < 0.7,
-        modelUsed: 'gpt-4o-mini-2024-07-18',
+        modelUsed: 'openai/gpt-oss-120b',
         promptTokens: 350 + Math.floor(Math.random() * 200),
         completionTokens: 120 + Math.floor(Math.random() * 80),
         classifiedAt: new Date(submittedAt.getTime() + 1500 + Math.random() * 500),

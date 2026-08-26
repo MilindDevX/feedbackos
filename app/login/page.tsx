@@ -68,7 +68,7 @@ export default function LoginPage() {
               <span className="gradient-text block">customer feedback.</span>
             </h1>
             <p className="mt-4 text-gray-400 text-lg leading-relaxed">
-              GPT-4o-mini reads, classifies, and routes every feedback item automatically. 
+              A reasoning LLM reads, classifies, and routes every feedback item automatically.
               Reclaim 5–10 hours of PM time every week.
             </p>
           </div>
