@@ -32,7 +32,7 @@ const mockDb = db as jest.Mocked<typeof db>
 function makeResult(overrides: Partial<ClassificationResult['output']> = {}): ClassificationResult {
   return {
     output: {
-      theme: 'bug',
+      theme: 'bug_problem',
       sentiment: 'negative',
       product_area: 'Dashboard',
       confidence: 0.8,

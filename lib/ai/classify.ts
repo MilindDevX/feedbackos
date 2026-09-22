@@ -47,52 +47,28 @@ export async function classifyFeedback(
 
   const startTime = Date.now()
 
-  let completion
-  try {
-    // reasoning_effort only applies to the Groq-hosted reasoning model;
-    // sending it to other providers (e.g. OpenRouter) can error out
-    const useGroq = Boolean(process.env.GROQ_API_KEY)
-    const baseParams: ChatCompletionCreateParamsNonStreaming = {
-      model: MODEL,
-      temperature: 0,
-      max_tokens: 512,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-    }
-    // the API only accepts a fixed set of effort levels, so anything else falls back to 'low'
-    const reasoningEfforts = ['minimal', 'low', 'medium', 'high'] as const
-    type ReasoningEffortLevel = (typeof reasoningEfforts)[number]
-    const rawEffort = process.env.GROQ_REASONING_EFFORT as ReasoningEffortLevel | undefined
-    const reasoningEffort: ReasoningEffortLevel =
-      rawEffort && (reasoningEfforts as readonly string[]).includes(rawEffort) ? rawEffort : 'low'
-    completion = await openai.chat.completions.create(
-      useGroq ? { ...baseParams, reasoning_effort: reasoningEffort } : baseParams
-    )
-  } catch (error: any) {
-    if (error?.status === 429 || error?.response?.status === 429 || error?.message?.includes('429')) {
-      console.log('[Classify] Rate limit hit, using fallback mock response...')
-      const fallback: ClassificationOutput = {
-        theme: 'bug',
-        sentiment: 'negative',
-        product_area: 'Data Import',
-        confidence: 0.95,
-        summary: 'CSV upload times out and fails for files over 2MB.',
-        requires_human_review: false,
-      }
-      return {
-        output: fallback,
-        modelUsed: `${MODEL} (fallback mock)`,
-        promptTokens: 0,
-        completionTokens: 0,
-        latencyMs: Date.now() - startTime,
-        rawResponse: fallback,
-      }
-    }
-    throw error
+  // reasoning_effort only applies to the Groq-hosted reasoning model;
+  // sending it to other providers (e.g. OpenRouter) can error out
+  const useGroq = Boolean(process.env.GROQ_API_KEY)
+  const baseParams: ChatCompletionCreateParamsNonStreaming = {
+    model: MODEL,
+    temperature: 0,
+    max_tokens: 512,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
   }
+  // The API only accepts a fixed set of effort levels, so anything else falls back to 'low'.
+  const reasoningEfforts = ['minimal', 'low', 'medium', 'high'] as const
+  type ReasoningEffortLevel = (typeof reasoningEfforts)[number]
+  const rawEffort = process.env.GROQ_REASONING_EFFORT as ReasoningEffortLevel | undefined
+  const reasoningEffort: ReasoningEffortLevel =
+    rawEffort && (reasoningEfforts as readonly string[]).includes(rawEffort) ? rawEffort : 'low'
+  const completion = await openai.chat.completions.create(
+    useGroq ? { ...baseParams, reasoning_effort: reasoningEffort } : baseParams
+  )
 
   const latencyMs = Date.now() - startTime
   const rawContent = completion.choices[0]?.message?.content
@@ -103,6 +79,13 @@ export async function classifyFeedback(
 
   const parsed = JSON.parse(rawContent)
   const validated = ClassificationOutputSchema.parse(parsed)
+  const fallbackProductArea = productAreas.find((area) => area.toLowerCase().includes('other'))
+
+  if (validated.product_area === 'Other' && fallbackProductArea) {
+    validated.product_area = fallbackProductArea
+  } else if (!productAreas.includes(validated.product_area)) {
+    throw new Error(`LLM returned product area outside the provided list: ${validated.product_area}`)
+  }
 
   return {
     output: validated,

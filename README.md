@@ -9,7 +9,7 @@
 **Demo URL:** [https://feedbackos.vercel.app](https://feedbackos.vercel.app)
 **Demo Login:** `demo@feedbackos.app` (email magic link — no Google account required)
 
-The demo ships with **48 pre-classified feedback items** across all 7 themes and 4 sentiment categories, ready to explore.
+The demo ships with **48 pre-classified feedback items** across all 6 themes and 4 sentiment categories, ready to explore.
 
 ---
 
@@ -67,7 +67,7 @@ items. I have to wait 10 seconds for it to render. Please fix this."
 **Output:** Structured classification (persisted to DB in ~1.2s)
 ```json
 {
-  "theme": "PERFORMANCE",
+  "theme": "USABILITY_ISSUE",
   "sentiment": "NEGATIVE",
   "product_area": "Dashboard",
   "confidence": 0.94,

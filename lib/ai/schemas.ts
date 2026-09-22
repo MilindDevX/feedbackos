@@ -3,11 +3,10 @@ import { z } from 'zod'
 // ─── Classification Output Schema (matches API contract exactly) ──────────────
 export const ClassificationOutputSchema = z.object({
   theme: z.enum([
-    'bug',
+    'bug_problem',
     'feature_request',
-    'pricing',
-    'onboarding',
-    'performance',
+    'usability_issue',
+    'question_support',
     'praise',
     'other',
   ]),
@@ -29,7 +28,7 @@ export const classificationJsonSchema = {
     properties: {
       theme: {
         type: 'string',
-        enum: ['bug', 'feature_request', 'pricing', 'onboarding', 'performance', 'praise', 'other'],
+        enum: ['bug_problem', 'feature_request', 'usability_issue', 'question_support', 'praise', 'other'],
         description: 'The primary theme category of this feedback',
       },
       sentiment: {
@@ -61,11 +60,10 @@ export const classificationJsonSchema = {
 
 // ─── Theme → DB Enum mapping ──────────────────────────────────────────────────
 export const themeToEnum: Record<string, string> = {
-  bug: 'BUG',
+  bug_problem: 'BUG_PROBLEM',
   feature_request: 'FEATURE_REQUEST',
-  pricing: 'PRICING',
-  onboarding: 'ONBOARDING',
-  performance: 'PERFORMANCE',
+  usability_issue: 'USABILITY_ISSUE',
+  question_support: 'QUESTION_SUPPORT',
   praise: 'PRAISE',
   other: 'OTHER',
 }

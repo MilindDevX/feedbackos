@@ -101,7 +101,7 @@ export default function FeedbackTable({ embedded = false, pageSize = 20 }: Feedb
           {showFilters && (
             <div className="w-full flex flex-wrap gap-2 mt-1">
               {[
-                { key: 'theme', label: 'Theme', options: ['BUG', 'FEATURE_REQUEST', 'PRICING', 'ONBOARDING', 'PERFORMANCE', 'PRAISE', 'OTHER'] },
+                { key: 'theme', label: 'Theme', options: ['BUG_PROBLEM', 'FEATURE_REQUEST', 'USABILITY_ISSUE', 'QUESTION_SUPPORT', 'PRAISE', 'OTHER'] },
                 { key: 'sentiment', label: 'Sentiment', options: ['POSITIVE', 'NEGATIVE', 'NEUTRAL', 'MIXED'] },
                 { key: 'source', label: 'Source', options: ['ZENDESK', 'INTERCOM', 'CSV', 'MANUAL', 'API'] },
                 { key: 'status', label: 'Status', options: ['PENDING', 'CLASSIFIED', 'NEEDS_REVIEW', 'REVIEWED', 'CLASSIFICATION_ERROR'] },

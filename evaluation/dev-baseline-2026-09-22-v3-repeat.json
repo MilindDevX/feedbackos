@@ -1,0 +1,1030 @@
+{
+  "dataset": "evaluation/feedbackos-eval-v0.1.csv",
+  "split": "dev",
+  "evaluatedAt": "2026-09-22T16:58:31.937Z",
+  "note": "Urgency accuracy is null because the current classifier contract does not emit urgency.",
+  "metrics": {
+    "total": 48,
+    "valid": 48,
+    "categoryMacroF1": 1,
+    "sentimentAccuracy": 0.9791666666666666,
+    "productAreaAccuracy": 0.875,
+    "reviewAccuracy": 0.9583333333333334,
+    "fullExactMatch": 0.8333333333333334,
+    "invalidOutputRate": 0,
+    "urgencyAccuracy": null,
+    "averageLatencyMs": 3648.6666666666665,
+    "promptTokens": 40442,
+    "completionTokens": 5648
+  },
+  "results": [
+    {
+      "id": "dev-bug_problem-01",
+      "text": "CSV import freezes at 80%, and none of our 2,000 responses appear.",
+      "expected": {
+        "category": "bug_problem",
+        "urgency": "high",
+        "sentiment": "negative",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "bug_problem",
+        "sentiment": "negative",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 1098,
+      "promptTokens": 811,
+      "completionTokens": 103
+    },
+    {
+      "id": "dev-bug_problem-02",
+      "text": "Our dashboard displayed private feedback belonging to another organization.",
+      "expected": {
+        "category": "bug_problem",
+        "urgency": "critical",
+        "sentiment": "negative",
+        "productArea": "Team/organization access",
+        "requiresHumanReview": true
+      },
+      "predicted": {
+        "category": "bug_problem",
+        "sentiment": "negative",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": true
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 763,
+      "promptTokens": 803,
+      "completionTokens": 113
+    },
+    {
+      "id": "dev-bug_problem-03",
+      "text": "Classification works generally, but billing complaints keep getting labelled as usability issues.",
+      "expected": {
+        "category": "bug_problem",
+        "urgency": "medium",
+        "sentiment": "mixed",
+        "productArea": "AI classification",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "bug_problem",
+        "sentiment": "negative",
+        "productArea": "AI classification",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 805,
+      "promptTokens": 807,
+      "completionTokens": 120
+    },
+    {
+      "id": "dev-bug_problem-04",
+      "text": "Deleting one saved filter also removes every filter shared by my team.",
+      "expected": {
+        "category": "bug_problem",
+        "urgency": "high",
+        "sentiment": "negative",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "bug_problem",
+        "sentiment": "negative",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 674,
+      "promptTokens": 806,
+      "completionTokens": 132
+    },
+    {
+      "id": "dev-bug_problem-05",
+      "text": "The review queue shows the same feedback twice after I refresh the page.",
+      "expected": {
+        "category": "bug_problem",
+        "urgency": "medium",
+        "sentiment": "negative",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "bug_problem",
+        "sentiment": "negative",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 749,
+      "promptTokens": 807,
+      "completionTokens": 88
+    },
+    {
+      "id": "dev-bug_problem-06",
+      "text": "Zendesk sync says complete, but today’s tickets never arrive.",
+      "expected": {
+        "category": "bug_problem",
+        "urgency": "high",
+        "sentiment": "negative",
+        "productArea": "Export/integrations",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "bug_problem",
+        "sentiment": "negative",
+        "productArea": "Export/integrations",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 642,
+      "promptTokens": 806,
+      "completionTokens": 112
+    },
+    {
+      "id": "dev-bug_problem-07",
+      "text": "Exported sentiment values do not match the values visible on the dashboard.",
+      "expected": {
+        "category": "bug_problem",
+        "urgency": "medium",
+        "sentiment": "negative",
+        "productArea": "Export/integrations",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "bug_problem",
+        "sentiment": "negative",
+        "productArea": "Export/integrations",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 986,
+      "promptTokens": 807,
+      "completionTokens": 141
+    },
+    {
+      "id": "dev-bug_problem-08",
+      "text": "I changed an item to Praise, reopened it, and it had reverted to Other.",
+      "expected": {
+        "category": "bug_problem",
+        "urgency": "medium",
+        "sentiment": "negative",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "bug_problem",
+        "sentiment": "negative",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 788,
+      "promptTokens": 810,
+      "completionTokens": 183
+    },
+    {
+      "id": "dev-feature_request-01",
+      "text": "Please send a Slack alert when critical feedback arrives.",
+      "expected": {
+        "category": "feature_request",
+        "urgency": "medium",
+        "sentiment": "neutral",
+        "productArea": "Export/integrations",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "feature_request",
+        "sentiment": "neutral",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 778,
+      "promptTokens": 1059,
+      "completionTokens": 127
+    },
+    {
+      "id": "dev-feature_request-02",
+      "text": "Dark mode would be nice.",
+      "expected": {
+        "category": "feature_request",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "feature_request",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 767,
+      "promptTokens": 799,
+      "completionTokens": 118
+    },
+    {
+      "id": "dev-feature_request-03",
+      "text": "Let us compare category trends before and after a product release.",
+      "expected": {
+        "category": "feature_request",
+        "urgency": "medium",
+        "sentiment": "neutral",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "feature_request",
+        "sentiment": "neutral",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 2822,
+      "promptTokens": 805,
+      "completionTokens": 111
+    },
+    {
+      "id": "dev-feature_request-04",
+      "text": "Please let reviewers save a private draft before submitting a classification change.",
+      "expected": {
+        "category": "feature_request",
+        "urgency": "medium",
+        "sentiment": "neutral",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "feature_request",
+        "sentiment": "neutral",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 4727,
+      "promptTokens": 806,
+      "completionTokens": 143
+    },
+    {
+      "id": "dev-feature_request-05",
+      "text": "Add a template that maps common Zendesk fields automatically during import.",
+      "expected": {
+        "category": "feature_request",
+        "urgency": "medium",
+        "sentiment": "neutral",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "feature_request",
+        "sentiment": "neutral",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 6807,
+      "promptTokens": 806,
+      "completionTokens": 122
+    },
+    {
+      "id": "dev-feature_request-06",
+      "text": "I want to define organization-specific urgency rules for enterprise customers.",
+      "expected": {
+        "category": "feature_request",
+        "urgency": "medium",
+        "sentiment": "neutral",
+        "productArea": "AI classification",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "feature_request",
+        "sentiment": "neutral",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 8005,
+      "promptTokens": 805,
+      "completionTokens": 145
+    },
+    {
+      "id": "dev-feature_request-07",
+      "text": "Please support SSO so teammates do not need separate magic links.",
+      "expected": {
+        "category": "feature_request",
+        "urgency": "medium",
+        "sentiment": "neutral",
+        "productArea": "Team/organization access",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "feature_request",
+        "sentiment": "neutral",
+        "productArea": "Team/organization access",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 7080,
+      "promptTokens": 806,
+      "completionTokens": 116
+    },
+    {
+      "id": "dev-feature_request-08",
+      "text": "It would help to search summaries and raw feedback separately.",
+      "expected": {
+        "category": "feature_request",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "feature_request",
+        "sentiment": "neutral",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 1233,
+      "promptTokens": 804,
+      "completionTokens": 108
+    },
+    {
+      "id": "dev-usability_issue-01",
+      "text": "I cannot understand why this response was marked urgent or how confident the AI is.",
+      "expected": {
+        "category": "usability_issue",
+        "urgency": "medium",
+        "sentiment": "negative",
+        "productArea": "AI classification",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "usability_issue",
+        "sentiment": "negative",
+        "productArea": "AI classification",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 6972,
+      "promptTokens": 809,
+      "completionTokens": 148
+    },
+    {
+      "id": "dev-usability_issue-02",
+      "text": "The CSV mapping screen uses internal field names that our support team does not recognize.",
+      "expected": {
+        "category": "usability_issue",
+        "urgency": "medium",
+        "sentiment": "negative",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "usability_issue",
+        "sentiment": "negative",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 824,
+      "promptTokens": 809,
+      "completionTokens": 125
+    },
+    {
+      "id": "dev-usability_issue-03",
+      "text": "It takes six clicks to move from a dashboard spike to the underlying feedback.",
+      "expected": {
+        "category": "usability_issue",
+        "urgency": "medium",
+        "sentiment": "negative",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "usability_issue",
+        "sentiment": "negative",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 7351,
+      "promptTokens": 808,
+      "completionTokens": 127
+    },
+    {
+      "id": "dev-usability_issue-04",
+      "text": "The Accept and Override buttons look identical, so I keep choosing the wrong action.",
+      "expected": {
+        "category": "usability_issue",
+        "urgency": "medium",
+        "sentiment": "negative",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "usability_issue",
+        "sentiment": "negative",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 842,
+      "promptTokens": 809,
+      "completionTokens": 135
+    },
+    {
+      "id": "dev-usability_issue-05",
+      "text": "Filters disappear below the fold on my 13-inch laptop.",
+      "expected": {
+        "category": "usability_issue",
+        "urgency": "medium",
+        "sentiment": "negative",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "usability_issue",
+        "sentiment": "negative",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 1783,
+      "promptTokens": 805,
+      "completionTokens": 116
+    },
+    {
+      "id": "dev-usability_issue-06",
+      "text": "The member role names do not explain what each person can actually access.",
+      "expected": {
+        "category": "usability_issue",
+        "urgency": "medium",
+        "sentiment": "negative",
+        "productArea": "Team/organization access",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "usability_issue",
+        "sentiment": "negative",
+        "productArea": "Team/organization access",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 6996,
+      "promptTokens": 807,
+      "completionTokens": 103
+    },
+    {
+      "id": "dev-usability_issue-07",
+      "text": "The Slack setup form asks for a webhook URL without telling me where to find it.",
+      "expected": {
+        "category": "usability_issue",
+        "urgency": "low",
+        "sentiment": "negative",
+        "productArea": "Export/integrations",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "usability_issue",
+        "sentiment": "negative",
+        "productArea": "Export/integrations",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 7144,
+      "promptTokens": 810,
+      "completionTokens": 130
+    },
+    {
+      "id": "dev-usability_issue-08",
+      "text": "“Other” dominates the chart, but there is no way to inspect what it contains from the chart.",
+      "expected": {
+        "category": "usability_issue",
+        "urgency": "medium",
+        "sentiment": "negative",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "usability_issue",
+        "sentiment": "negative",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 714,
+      "promptTokens": 814,
+      "completionTokens": 119
+    },
+    {
+      "id": "dev-question_support-01",
+      "text": "Can guest reviewers export reports without seeing the raw feedback?",
+      "expected": {
+        "category": "question_support",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "Team/organization access",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "question_support",
+        "sentiment": "neutral",
+        "productArea": "Export/integrations",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 7044,
+      "promptTokens": 804,
+      "completionTokens": 121
+    },
+    {
+      "id": "dev-question_support-02",
+      "text": "Which CSV column should contain the original submission date?",
+      "expected": {
+        "category": "question_support",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "question_support",
+        "sentiment": "neutral",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 731,
+      "promptTokens": 1571,
+      "completionTokens": 115
+    },
+    {
+      "id": "dev-question_support-03",
+      "text": "Why was this item sent to human review when its confidence is 0.81?",
+      "expected": {
+        "category": "question_support",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "AI classification",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "question_support",
+        "sentiment": "neutral",
+        "productArea": "AI classification",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 7571,
+      "promptTokens": 810,
+      "completionTokens": 139
+    },
+    {
+      "id": "dev-question_support-04",
+      "text": "How do I reopen an item after another reviewer accepted it?",
+      "expected": {
+        "category": "question_support",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "question_support",
+        "sentiment": "neutral",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 6859,
+      "promptTokens": 805,
+      "completionTokens": 93
+    },
+    {
+      "id": "dev-question_support-05",
+      "text": "Can the dashboard use our financial year instead of the calendar year?",
+      "expected": {
+        "category": "question_support",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "question_support",
+        "sentiment": "neutral",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 7067,
+      "promptTokens": 1062,
+      "completionTokens": 108
+    },
+    {
+      "id": "dev-question_support-06",
+      "text": "Is there a way to search only within customer comments and ignore summaries?",
+      "expected": {
+        "category": "question_support",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "question_support",
+        "sentiment": "neutral",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 2574,
+      "promptTokens": 1319,
+      "completionTokens": 108
+    },
+    {
+      "id": "dev-question_support-07",
+      "text": "What is the difference between Admin and Owner permissions?",
+      "expected": {
+        "category": "question_support",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "Team/organization access",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "question_support",
+        "sentiment": "neutral",
+        "productArea": "Team/organization access",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 4782,
+      "promptTokens": 803,
+      "completionTokens": 112
+    },
+    {
+      "id": "dev-question_support-08",
+      "text": "Where can I see the last successful Zendesk sync time?",
+      "expected": {
+        "category": "question_support",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "Export/integrations",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "question_support",
+        "sentiment": "neutral",
+        "productArea": "Export/integrations",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 6696,
+      "promptTokens": 805,
+      "completionTokens": 122
+    },
+    {
+      "id": "dev-praise-01",
+      "text": "The new filters cut our weekly review time in half.",
+      "expected": {
+        "category": "praise",
+        "urgency": "low",
+        "sentiment": "positive",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "praise",
+        "sentiment": "positive",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 6825,
+      "promptTokens": 804,
+      "completionTokens": 99
+    },
+    {
+      "id": "dev-praise-02",
+      "text": "The CSV preview caught three malformed rows before they polluted our dashboard.",
+      "expected": {
+        "category": "praise",
+        "urgency": "low",
+        "sentiment": "positive",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "praise",
+        "sentiment": "positive",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 6916,
+      "promptTokens": 806,
+      "completionTokens": 120
+    },
+    {
+      "id": "dev-praise-03",
+      "text": "Your uncertainty flag is excellent; our team finally knows what needs judgment.",
+      "expected": {
+        "category": "praise",
+        "urgency": "low",
+        "sentiment": "positive",
+        "productArea": "AI classification",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "praise",
+        "sentiment": "positive",
+        "productArea": "AI classification",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 1999,
+      "promptTokens": 807,
+      "completionTokens": 194
+    },
+    {
+      "id": "dev-praise-04",
+      "text": "Keyboard review makes clearing the queue much faster than our old spreadsheet.",
+      "expected": {
+        "category": "praise",
+        "urgency": "low",
+        "sentiment": "positive",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "praise",
+        "sentiment": "positive",
+        "productArea": "Review queue",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 6813,
+      "promptTokens": 806,
+      "completionTokens": 94
+    },
+    {
+      "id": "dev-praise-05",
+      "text": "The weekly trend view made our onboarding problem obvious in one meeting.",
+      "expected": {
+        "category": "praise",
+        "urgency": "low",
+        "sentiment": "positive",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "praise",
+        "sentiment": "positive",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 7182,
+      "promptTokens": 806,
+      "completionTokens": 122
+    },
+    {
+      "id": "dev-praise-06",
+      "text": "I found an old customer quote in seconds using the new search.",
+      "expected": {
+        "category": "praise",
+        "urgency": "low",
+        "sentiment": "positive",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "praise",
+        "sentiment": "positive",
+        "productArea": "Search/filtering",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 1110,
+      "promptTokens": 806,
+      "completionTokens": 104
+    },
+    {
+      "id": "dev-praise-07",
+      "text": "Role-based access was straightforward enough that we invited the whole product team today.",
+      "expected": {
+        "category": "praise",
+        "urgency": "low",
+        "sentiment": "positive",
+        "productArea": "Team/organization access",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "praise",
+        "sentiment": "positive",
+        "productArea": "Team/organization access",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 1137,
+      "promptTokens": 808,
+      "completionTokens": 123
+    },
+    {
+      "id": "dev-praise-08",
+      "text": "We renewed for another year.",
+      "expected": {
+        "category": "praise",
+        "urgency": "low",
+        "sentiment": "positive",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "praise",
+        "sentiment": "positive",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 7470,
+      "promptTokens": 1055,
+      "completionTokens": 97
+    },
+    {
+      "id": "dev-other-01",
+      "text": "Our procurement team needs a completed vendor questionnaire before we can continue.",
+      "expected": {
+        "category": "other",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "other",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 1637,
+      "promptTokens": 806,
+      "completionTokens": 117
+    },
+    {
+      "id": "dev-other-02",
+      "text": "This comment is only here to verify that the feedback form is connected.",
+      "expected": {
+        "category": "other",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "other",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 2566,
+      "promptTokens": 807,
+      "completionTokens": 98
+    },
+    {
+      "id": "dev-other-03",
+      "text": "The customer mentioned Dashboard, Slack, CSV, and billing but did not describe an issue or request.",
+      "expected": {
+        "category": "other",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": true
+      },
+      "predicted": {
+        "category": "other",
+        "sentiment": "neutral",
+        "productArea": "Dashboard/analytics",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 535,
+      "promptTokens": 813,
+      "completionTokens": 124
+    },
+    {
+      "id": "dev-other-04",
+      "text": "Please ignore this submission; I selected the wrong form.",
+      "expected": {
+        "category": "other",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "other",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 742,
+      "promptTokens": 804,
+      "completionTokens": 134
+    },
+    {
+      "id": "dev-other-05",
+      "text": "Following up on the conversation from yesterday.",
+      "expected": {
+        "category": "other",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": true
+      },
+      "predicted": {
+        "category": "other",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 689,
+      "promptTokens": 801,
+      "completionTokens": 92
+    },
+    {
+      "id": "dev-other-06",
+      "text": "N/A",
+      "expected": {
+        "category": "other",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": true
+      },
+      "predicted": {
+        "category": "other",
+        "sentiment": "neutral",
+        "productArea": "Feedback intake/import",
+        "requiresHumanReview": true
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 0,
+      "promptTokens": 0,
+      "completionTokens": 0
+    },
+    {
+      "id": "dev-other-07",
+      "text": "John from Acme called at 3 PM.",
+      "expected": {
+        "category": "other",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "other",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 7911,
+      "promptTokens": 803,
+      "completionTokens": 106
+    },
+    {
+      "id": "dev-other-08",
+      "text": "Renewal paperwork was routed to procurement.",
+      "expected": {
+        "category": "other",
+        "urgency": "low",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "predicted": {
+        "category": "other",
+        "sentiment": "neutral",
+        "productArea": "General/other",
+        "requiresHumanReview": false
+      },
+      "modelUsed": "openai/gpt-oss-120b",
+      "latencyMs": 6930,
+      "promptTokens": 1313,
+      "completionTokens": 121
+    }
+  ]
+}

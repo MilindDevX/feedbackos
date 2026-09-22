@@ -11,6 +11,7 @@
     "lint": "eslint",
     "test": "jest",
     "test:unit": "jest __tests__/unit",
+    "eval:classification": "node --import tsx scripts/evaluate-classification.ts",
     "test:e2e": "playwright test __tests__/e2e",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

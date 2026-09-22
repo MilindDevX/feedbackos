@@ -94,8 +94,8 @@ describe('GET /api/dashboard/summary – caching', () => {
   const sessionMock = { user: { id: 'user-1', organizationId: 'org-1' } }
   const cachedData = {
     total: 42, needsReview: 5, negativePercent: 20,
-    byTheme: { BUG: 10 }, bySentiment: { NEGATIVE: 8 },
-    byProductArea: {}, topProductAreas: [], byStatus: {}, topTheme: 'BUG',
+    byTheme: { BUG_PROBLEM: 10 }, bySentiment: { NEGATIVE: 8 },
+    byProductArea: {}, topProductAreas: [], byStatus: {}, topTheme: 'BUG_PROBLEM',
   }
 
   it('returns cached response on 2nd call within TTL (redis.get returns data)', async () => {

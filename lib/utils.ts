@@ -7,8 +7,9 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatTheme(theme: string): string {
   const map: Record<string, string> = {
-    BUG: 'Bug', FEATURE_REQUEST: 'Feature Request', PRICING: 'Pricing',
-    ONBOARDING: 'Onboarding', PERFORMANCE: 'Performance', PRAISE: 'Praise', OTHER: 'Other',
+    BUG_PROBLEM: 'Bug / Problem', FEATURE_REQUEST: 'Feature Request',
+    USABILITY_ISSUE: 'Usability Issue', QUESTION_SUPPORT: 'Question / Support',
+    PRAISE: 'Praise', OTHER: 'Other',
   }
   return map[theme] || theme
 }
@@ -53,8 +54,8 @@ export function confidenceColor(score: number): string {
 }
 
 export const THEME_COLORS: Record<string, string> = {
-  BUG: '#ef4444', FEATURE_REQUEST: '#3b82f6', PRICING: '#f59e0b',
-  ONBOARDING: '#8b5cf6', PERFORMANCE: '#f97316', PRAISE: '#22c55e', OTHER: '#6b7280',
+  BUG_PROBLEM: '#ef4444', FEATURE_REQUEST: '#3b82f6', USABILITY_ISSUE: '#f97316',
+  QUESTION_SUPPORT: '#8b5cf6', PRAISE: '#22c55e', OTHER: '#6b7280',
 }
 
 export const SENTIMENT_COLORS: Record<string, string> = {

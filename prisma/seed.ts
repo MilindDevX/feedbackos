@@ -2,51 +2,51 @@ import { PrismaClient, SourceType, FeedbackStatus, Theme, Sentiment } from '@pri
 
 const prisma = new PrismaClient()
 
-const themes: Theme[] = ['BUG', 'FEATURE_REQUEST', 'PRICING', 'ONBOARDING', 'PERFORMANCE', 'PRAISE', 'OTHER']
+const themes: Theme[] = ['BUG_PROBLEM', 'FEATURE_REQUEST', 'USABILITY_ISSUE', 'QUESTION_SUPPORT', 'PRAISE', 'OTHER']
 const sentiments: Sentiment[] = ['POSITIVE', 'NEUTRAL', 'NEGATIVE', 'MIXED']
 const sources: SourceType[] = ['ZENDESK', 'CSV', 'MANUAL', 'INTERCOM']
 
 const sampleFeedback = [
-  // BUG feedback
+  // BUG / PROBLEM feedback
   {
     rawText: "The export button completely breaks when I have more than 200 records selected. It just spins forever and I have to refresh the page. Lost my work twice today.",
-    theme: 'BUG' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Export button hangs with 200+ records selected", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Export button hangs with 200+ records selected", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
   },
   {
     rawText: "CSV export is downloading a completely empty file. The header row is there but no data. This started happening after last week's update.",
-    theme: 'BUG' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "CSV export downloads empty file after recent update", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "CSV export downloads empty file after recent update", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
   },
   {
     rawText: "Login with Google keeps saying 'OAuth error' on mobile Chrome. Works fine on desktop. Please fix this ASAP — half my team can't log in.",
-    theme: 'BUG' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Google OAuth fails on mobile Chrome for team users", source: 'INTERCOM' as SourceType, productArea: 'Authentication',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Google OAuth fails on mobile Chrome for team users", source: 'INTERCOM' as SourceType, productArea: 'Authentication',
   },
   {
     rawText: "Webhooks stopped firing about 3 hours ago. Our Zapier integration is completely broken. We have a live demo in 2 hours, this is critical.",
-    theme: 'BUG' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Webhooks stopped firing, breaking downstream integrations", source: 'ZENDESK' as SourceType, productArea: 'API',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Webhooks stopped firing, breaking downstream integrations", source: 'ZENDESK' as SourceType, productArea: 'API',
   },
   {
     rawText: "The search filter doesn't reset when I navigate away and come back. It shows wrong results. I have to manually clear the filters every time.",
-    theme: 'BUG' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Search filters persist incorrectly between navigation", source: 'MANUAL' as SourceType, productArea: 'Dashboard',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Search filters persist incorrectly between navigation", source: 'MANUAL' as SourceType, productArea: 'Dashboard',
   },
   {
     rawText: "Notifications are not being sent to Slack even though it's connected. Tested the webhook URL manually and it works. Something's wrong on your end.",
-    theme: 'BUG' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Slack notifications not firing despite valid webhook", source: 'ZENDESK' as SourceType, productArea: 'Integrations',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Slack notifications not firing despite valid webhook", source: 'ZENDESK' as SourceType, productArea: 'Integrations',
   },
   {
     rawText: "The date picker is completely broken in Safari. Clicking any date closes the calendar without selecting it. This is a dealbreaker for several of our Mac users.",
-    theme: 'BUG' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Date picker non-functional in Safari browser", source: 'INTERCOM' as SourceType, productArea: 'Dashboard',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Date picker non-functional in Safari browser", source: 'INTERCOM' as SourceType, productArea: 'Dashboard',
   },
   {
     rawText: "API rate limit endpoint returns 200 even when we exceed the limit. Our client thinks everything is fine but nothing is being saved. Very confusing.",
-    theme: 'BUG' as Theme, sentiment: 'MIXED' as Sentiment, summary: "API returns 200 incorrectly when rate limit exceeded", source: 'ZENDESK' as SourceType, productArea: 'API',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'MIXED' as Sentiment, summary: "API returns 200 incorrectly when rate limit exceeded", source: 'ZENDESK' as SourceType, productArea: 'API',
   },
   {
     rawText: "Two-factor authentication code expires too quickly. By the time I get the SMS, the code is already expired. Takes 4-5 attempts to get in.",
-    theme: 'BUG' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "2FA codes expire before SMS is received", source: 'MANUAL' as SourceType, productArea: 'Authentication',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "2FA codes expire before SMS is received", source: 'MANUAL' as SourceType, productArea: 'Authentication',
   },
   {
     rawText: "Bulk delete operation says 'success' but only deletes about half the selected records. Had to run it 4 times to clear my test data.",
-    theme: 'BUG' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Bulk delete silently fails on partial record sets", source: 'CSV' as SourceType, productArea: 'Dashboard',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Bulk delete silently fails on partial record sets", source: 'CSV' as SourceType, productArea: 'Dashboard',
   },
   // FEATURE_REQUEST feedback
   {
@@ -89,72 +89,72 @@ const sampleFeedback = [
     rawText: "Audit logs please! We need to see who changed what and when, especially for compliance. Right now there's no way to track changes to classifications.",
     theme: 'FEATURE_REQUEST' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "Audit logs for classification changes needed for compliance", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
   },
-  // PRICING feedback
+  // QUESTION / SUPPORT feedback
   {
     rawText: "The Pro plan jumped from $49 to $89 overnight with no notice. That's an 81% increase. I understand pricing needs to change but this is a terrible way to treat loyal customers.",
-    theme: 'PRICING' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Sudden 81% price increase without customer notification", source: 'ZENDESK' as SourceType, productArea: 'Billing',
+    theme: 'OTHER' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Sudden 81% price increase without customer notification", source: 'ZENDESK' as SourceType, productArea: 'Billing',
   },
   {
     rawText: "Why are API calls counted against our monthly quota? We're paying for the seat license — the API should be included. Every other tool in this space does it.",
-    theme: 'PRICING' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "API calls billed separately from seat license is unfair", source: 'INTERCOM' as SourceType, productArea: 'API',
+    theme: 'QUESTION_SUPPORT' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "API calls billed separately from seat license is unfair", source: 'INTERCOM' as SourceType, productArea: 'API',
   },
   {
     rawText: "Would love an annual billing option. Monthly payments are annoying to track and a 15-20% discount for annual would make the decision to upgrade much easier.",
-    theme: 'PRICING' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "Annual billing with discount would drive plan upgrades", source: 'MANUAL' as SourceType, productArea: 'Billing',
+    theme: 'QUESTION_SUPPORT' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "Annual billing with discount would drive plan upgrades", source: 'MANUAL' as SourceType, productArea: 'Billing',
   },
   {
     rawText: "The startup discount program you advertised on your blog — how do I apply? We're a seed-stage company and the standard pricing is out of reach right now.",
-    theme: 'PRICING' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "Startup discount program application process unclear", source: 'ZENDESK' as SourceType, productArea: 'Billing',
+    theme: 'QUESTION_SUPPORT' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "Startup discount program application process unclear", source: 'ZENDESK' as SourceType, productArea: 'Billing',
   },
   {
     rawText: "I was charged twice this month. I see two identical charges on my credit card statement. Please refund and fix whatever caused this.",
-    theme: 'PRICING' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Duplicate billing charge this month needs urgent refund", source: 'ZENDESK' as SourceType, productArea: 'Billing',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Duplicate billing charge this month needs urgent refund", source: 'ZENDESK' as SourceType, productArea: 'Billing',
   },
-  // ONBOARDING feedback
+  // USABILITY ISSUE feedback
   {
     rawText: "Spent 45 minutes trying to get my first integration working. The documentation links in the setup wizard are broken and point to 404 pages. Very frustrating first experience.",
-    theme: 'ONBOARDING' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Broken documentation links in setup wizard during onboarding", source: 'ZENDESK' as SourceType, productArea: 'Onboarding',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Broken documentation links in setup wizard during onboarding", source: 'ZENDESK' as SourceType, productArea: 'Onboarding',
   },
   {
     rawText: "The initial setup is overwhelming. You're asked to configure 8 things before you can submit a single piece of feedback. Can you create a simpler 'quick start' mode?",
-    theme: 'ONBOARDING' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Complex setup requires 8 steps before first feedback submission", source: 'INTERCOM' as SourceType, productArea: 'Onboarding',
+    theme: 'USABILITY_ISSUE' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Complex setup requires 8 steps before first feedback submission", source: 'INTERCOM' as SourceType, productArea: 'Onboarding',
   },
   {
     rawText: "Your getting started video is incredibly well made and helped me get up and running in 15 minutes. I wish I'd found it before trying the docs.",
-    theme: 'ONBOARDING' as Theme, sentiment: 'POSITIVE' as Sentiment, summary: "Getting started video praised for quality and clarity", source: 'MANUAL' as SourceType, productArea: 'Onboarding',
+    theme: 'PRAISE' as Theme, sentiment: 'POSITIVE' as Sentiment, summary: "Getting started video praised for quality and clarity", source: 'MANUAL' as SourceType, productArea: 'Onboarding',
   },
   {
     rawText: "Inviting team members should be step 1 of onboarding, not buried in settings. We almost gave up because we couldn't figure out how to add our PM.",
-    theme: 'ONBOARDING' as Theme, sentiment: 'MIXED' as Sentiment, summary: "Team invitation buried in settings instead of onboarding flow", source: 'CSV' as SourceType, productArea: 'Onboarding',
+    theme: 'USABILITY_ISSUE' as Theme, sentiment: 'MIXED' as Sentiment, summary: "Team invitation buried in settings instead of onboarding flow", source: 'CSV' as SourceType, productArea: 'Onboarding',
   },
   {
     rawText: "The CSV import template you provide doesn't match what's actually accepted. Spent an hour reformatting our data before realizing the template was outdated.",
-    theme: 'ONBOARDING' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "CSV import template doesn't match accepted format", source: 'ZENDESK' as SourceType, productArea: 'Onboarding',
+    theme: 'BUG_PROBLEM' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "CSV import template doesn't match accepted format", source: 'ZENDESK' as SourceType, productArea: 'Onboarding',
   },
   {
     rawText: "Would love a sandbox/demo environment to test things out before connecting our real Zendesk account. I'm hesitant to grant production access just to evaluate the tool.",
-    theme: 'ONBOARDING' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "Sandbox environment needed to safely evaluate integrations", source: 'INTERCOM' as SourceType, productArea: 'Onboarding',
+    theme: 'FEATURE_REQUEST' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "Sandbox environment needed to safely evaluate integrations", source: 'INTERCOM' as SourceType, productArea: 'Onboarding',
   },
-  // PERFORMANCE feedback
+  // USABILITY ISSUE feedback
   {
     rawText: "Dashboard takes 12-15 seconds to load when I have more than 1,000 feedback items. This is completely unusable for daily work. Need some serious optimization.",
-    theme: 'PERFORMANCE' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Dashboard loads 12-15 seconds with 1000+ feedback items", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
+    theme: 'USABILITY_ISSUE' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Dashboard loads 12-15 seconds with 1000+ feedback items", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
   },
   {
     rawText: "The API response time has gotten significantly worse over the past 2 weeks. P99 is now over 3 seconds where it used to be under 500ms. Something changed.",
-    theme: 'PERFORMANCE' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "API P99 latency degraded from 500ms to 3s recently", source: 'MANUAL' as SourceType, productArea: 'API',
+    theme: 'USABILITY_ISSUE' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "API P99 latency degraded from 500ms to 3s recently", source: 'MANUAL' as SourceType, productArea: 'API',
   },
   {
     rawText: "Uploading a 5MB CSV file takes forever — the browser tab just hangs for 2-3 minutes. Other tools handle this instantly. Please optimize the upload pipeline.",
-    theme: 'PERFORMANCE' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "5MB CSV upload hangs browser for 2-3 minutes", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
+    theme: 'USABILITY_ISSUE' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "5MB CSV upload hangs browser for 2-3 minutes", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
   },
   {
     rawText: "Search results take 4+ seconds to appear when I type in the filter box. The UI becomes unresponsive. Feels like it's searching on every keystroke without debouncing.",
-    theme: 'PERFORMANCE' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Real-time search causes 4-second delays on keystroke", source: 'INTERCOM' as SourceType, productArea: 'Dashboard',
+    theme: 'USABILITY_ISSUE' as Theme, sentiment: 'NEGATIVE' as Sentiment, summary: "Real-time search causes 4-second delays on keystroke", source: 'INTERCOM' as SourceType, productArea: 'Dashboard',
   },
   {
     rawText: "The chart animations lag horribly on my work laptop (i5, 16GB RAM). They should be smooth — maybe offer a reduced motion option for lower-powered machines.",
-    theme: 'PERFORMANCE' as Theme, sentiment: 'MIXED' as Sentiment, summary: "Chart animations lag on mid-tier hardware, reduced motion needed", source: 'MANUAL' as SourceType, productArea: 'Dashboard',
+    theme: 'USABILITY_ISSUE' as Theme, sentiment: 'MIXED' as Sentiment, summary: "Chart animations lag on mid-tier hardware, reduced motion needed", source: 'MANUAL' as SourceType, productArea: 'Dashboard',
   },
   // PRAISE feedback
   {
@@ -188,23 +188,23 @@ const sampleFeedback = [
   // OTHER feedback
   {
     rawText: "Is there a way to export my data if I decide to cancel? Want to make sure I can take my feedback history with me before committing to an annual plan.",
-    theme: 'OTHER' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "Data portability question before committing to annual plan", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
+    theme: 'QUESTION_SUPPORT' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "Data portability question before committing to annual plan", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
   },
   {
     rawText: "What's your data retention policy? We're in fintech and need to know if feedback data is stored for at least 7 years for compliance purposes.",
-    theme: 'OTHER' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "Data retention policy inquiry for fintech compliance needs", source: 'INTERCOM' as SourceType, productArea: 'Dashboard',
+    theme: 'QUESTION_SUPPORT' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "Data retention policy inquiry for fintech compliance needs", source: 'INTERCOM' as SourceType, productArea: 'Dashboard',
   },
   {
     rawText: "Do you have a referral program? We've recommended you to 3 other companies this quarter and would love some kind of credit or recognition for that.",
-    theme: 'OTHER' as Theme, sentiment: 'POSITIVE' as Sentiment, summary: "Referral program inquiry after multiple company recommendations", source: 'MANUAL' as SourceType, productArea: 'Billing',
+    theme: 'QUESTION_SUPPORT' as Theme, sentiment: 'POSITIVE' as Sentiment, summary: "Referral program inquiry after multiple company recommendations", source: 'MANUAL' as SourceType, productArea: 'Billing',
   },
   {
     rawText: "Are you GDPR compliant? We're based in Germany and need to process a DPA before we can use any SaaS tools. Please send me the necessary documentation.",
-    theme: 'OTHER' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "GDPR compliance and DPA documentation requested for EU use", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
+    theme: 'QUESTION_SUPPORT' as Theme, sentiment: 'NEUTRAL' as Sentiment, summary: "GDPR compliance and DPA documentation requested for EU use", source: 'ZENDESK' as SourceType, productArea: 'Dashboard',
   },
   {
     rawText: "Love the product overall but the color scheme feels a bit dated. Any plans to refresh the UI? Would love to see a more modern design.",
-    theme: 'OTHER' as Theme, sentiment: 'MIXED' as Sentiment, summary: "Product praised but UI color scheme feels dated", source: 'CSV' as SourceType, productArea: 'Dashboard',
+    theme: 'USABILITY_ISSUE' as Theme, sentiment: 'MIXED' as Sentiment, summary: "Product praised but UI color scheme feels dated", source: 'CSV' as SourceType, productArea: 'Dashboard',
   },
 ]
 
