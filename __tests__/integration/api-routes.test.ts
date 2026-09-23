@@ -13,7 +13,7 @@ jest.mock('@/auth', () => ({
 jest.mock('@/lib/db', () => ({
   db: {
     feedbackItem: {
-      create: jest.fn(),
+      create: jest.fn().mockResolvedValue({ id: 'feedback-1' }),
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
       groupBy: jest.fn().mockResolvedValue([]),
@@ -28,7 +28,7 @@ jest.mock('@/lib/redis', () => ({
     incr: jest.fn().mockResolvedValue(1),
     expire: jest.fn(),
     get: jest.fn(),
-    setex: jest.fn(),
+    setex: jest.fn().mockResolvedValue('OK'),
     ping: jest.fn(),
   },
 }))

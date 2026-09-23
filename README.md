@@ -167,7 +167,11 @@ Set the **build command** to:
 npm run deploy:build
 ```
 
-This runs `prisma generate && prisma migrate deploy && next build` — ensuring the DB is always migrated before the app starts.
+This runs `prisma generate && prisma migrate deploy && next build` for the worker. The Vercel build does not run migrations, so coordinate the web and worker releases when changing database enums.
+
+The six-theme migration maps existing classifications, review history, and alert rules to the new labels. Items with a `PRICING`, `ONBOARDING`, or `PERFORMANCE` classification in `CLASSIFIED`, `CLASSIFYING`, or `REVIEWED` status move to `NEEDS_REVIEW`; items already awaiting review stay there. Alert rules targeting those retired themes are disabled before remapping; review their broader new meaning before reactivating them.
+
+For this enum change, use a brief maintenance cutover: create and restore-test a Neon snapshot, pause the worker and scheduled consumers, confirm no items are `PENDING` or `CLASSIFYING`, apply the migration, then deploy matching web and worker code. Verify the migration record, review queue, disabled alert rules, worker logs, and public health before ending maintenance. The old and new app versions are not compatible with both enum schemas, so brief web errors are possible during the cutover. Do not restore a production snapshot without separately approving the potential loss of writes made since it was taken.
 
 Start the **worker** as a separate service with:
 ```bash

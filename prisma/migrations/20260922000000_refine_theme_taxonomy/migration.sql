@@ -1,7 +1,7 @@
 -- Retired topic-based themes become reviewable intent-based themes.
-UPDATE "FeedbackItem"
+UPDATE "feedback_items"
 SET "status" = 'NEEDS_REVIEW'
-WHERE "status" IN ('CLASSIFIED', 'CLASSIFYING')
+WHERE "status" IN ('CLASSIFIED', 'CLASSIFYING', 'REVIEWED')
   AND "id" IN (
     SELECT "feedbackId"
     FROM "Classification"
@@ -11,6 +11,12 @@ WHERE "status" IN ('CLASSIFIED', 'CLASSIFYING')
 UPDATE "Classification"
 SET "requiresHumanReview" = true
 WHERE "theme" IN ('PRICING', 'ONBOARDING', 'PERFORMANCE');
+
+-- Existing topic-specific alerts must not silently match broader intent labels.
+UPDATE "AlertRule"
+SET "isActive" = false
+WHERE "theme" IN ('PRICING', 'ONBOARDING', 'PERFORMANCE')
+  AND "isActive" = true;
 
 ALTER TYPE "Theme" RENAME TO "Theme_old";
 

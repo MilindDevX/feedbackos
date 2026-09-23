@@ -2,15 +2,14 @@
  * E2E TEST SPEC: CSV Upload → Processing → Feedback Table (Playwright)
  *
  * Prerequisites:
- *   1. npm install -D @playwright/test
- *   2. npx playwright install chromium
- *   3. App + worker must be running: npm run dev
- *   4. DB seeded: npm run db:seed
+ *   1. npx playwright install chromium
+ *   2. App + worker must be running: npm run dev
+ *   3. DB seeded: npm run db:seed
  *
- * Run: npx playwright test e2e/csv-upload.spec.ts
+ * Run: npm run test:e2e
  */
 
-import { test, expect, Page } from '@playwright/test'
+import { test, expect, type Page } from 'playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
