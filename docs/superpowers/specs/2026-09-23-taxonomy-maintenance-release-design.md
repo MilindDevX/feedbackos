@@ -9,10 +9,10 @@ Release the six intent-based feedback themes without silently losing classificat
 
 ## Verified starting state
 
-- At the last remote check, GitHub `main` was at `440bdf5`; local `main` has the taxonomy commit `3b26af2` and uncommitted release corrections. Recheck remote and local state before release.
+- At the last remote check, GitHub `main` was at `440bdf5`; local `main` has the taxonomy commit `3b26af2` and release-corrections commit `a7c0e1d`. Neither has been pushed. Recheck remote and local state before release.
 - The production database is on Neon's default `main` branch. Before migration it had one applied migration, 48 feedback items/classifications, no alert rules, and no `PENDING` or `CLASSIFYING` statuses. Sixteen classifications use retired themes: 5 `PRICING`, 6 `ONBOARDING`, 5 `PERFORMANCE`. Private project identifiers are recorded only in the Git-excluded project brain.
 - A Neon snapshot was created from `main` and restore-tested on 2026-09-23: a throwaway branch had 48 feedback items, one applied migration, and 16 retired-theme classifications. Production `main` retained the same aggregate counts. The throwaway branch was deleted; the snapshot remains.
-- Vercel is accessible via CLI. Render CLI still reports unauthorized after a device-login attempt; worker service and deployment settings are unverified. Public login loaded in the in-app browser; `/api/health` timed out from the agent environment, which is inconclusive by itself.
+- Vercel and Render are accessible via CLI. The connected Render account has no FeedbackOS service, so the background worker's deployment location and controls remain unverified. Public login loaded in the in-app browser; `/api/health` timed out from the agent environment, which is inconclusive by itself.
 
 ## Changes before release
 
@@ -26,9 +26,9 @@ Use failing regression tests before each code change. Rehearse clean install and
 ## Cutover sequence
 
 0. Completed on 2026-09-23: restored the pre-migration snapshot into a named throwaway branch, verified schema and aggregate counts, checked production `main` was unchanged, then deleted only the throwaway branch. No restore was finalized onto `main`.
-1. Confirm the Neon snapshot is still available. Regain Render access and identify the actual worker service, build command, and auto-deploy setting. Check remote `main` has not advanced.
+1. Confirm the Neon snapshot is still available. Identify where the actual worker runs, or establish that it has never been deployed; inspect its build command and deployment controls. Check remote `main` has not advanced.
 2. Pause the worker and any scheduled background consumers; confirm no items remain `CLASSIFYING` or `PENDING` before migration. Existing web traffic may encounter errors until the matching deployment is live, so treat this as a maintenance window rather than zero downtime.
-3. Apply the tested Prisma migration to Neon `main` in a controlled step, then push the matching application commit to GitHub `main`. Wait for Vercel's production deployment and deploy/resume the matching Render worker version.
+3. Apply the tested Prisma migration to Neon `main` in a controlled step, then push the matching application commits to GitHub `main`. Wait for Vercel's production deployment and deploy/resume the matching worker version on its confirmed host.
 4. Verify the deployed commit, Neon migration record, expected review counts, inactive legacy alert rules, worker startup/logs, and public health endpoint. Complete an authenticated upload-to-review browser check if a safe demo session is available; otherwise report it explicitly as unverified.
 
 If any prerequisite fails, stop before pushing. If the cutover fails after migration, keep the worker paused and report the precise state. Restoring the Neon snapshot can discard post-snapshot writes and requires separate explicit approval; do not do it automatically.
