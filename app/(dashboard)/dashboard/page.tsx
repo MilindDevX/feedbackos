@@ -10,6 +10,7 @@ import { formatTheme } from '@/lib/utils'
 
 interface Summary {
   total: number
+  windowDays: number | null
   needsReview: number
   negativePercent: number
   byTheme: Record<string, number>
@@ -57,7 +58,7 @@ export default function DashboardPage() {
       value: summary?.total ?? 0,
       icon: MessageSquare,
       color: 'brand' as const,
-      description: 'All-time feedback items',
+      description: summary?.windowDays ? `Received in the last ${summary.windowDays} days` : 'Received in the selected range',
     },
     {
       id: 'negative',
@@ -73,7 +74,7 @@ export default function DashboardPage() {
       value: summary?.needsReview ?? 0,
       icon: AlertTriangle,
       color: 'amber' as const,
-      description: 'Low-confidence items',
+      description: 'Open low-confidence items, any date',
     },
     {
       id: 'top-theme',
@@ -81,7 +82,7 @@ export default function DashboardPage() {
       value: summary?.topTheme ? formatTheme(summary.topTheme) : '—',
       icon: Tag,
       color: 'purple' as const,
-      description: 'Most frequent category',
+      description: summary?.windowDays ? `Most frequent, last ${summary.windowDays} days` : 'Most frequent category',
     },
   ]
 
@@ -123,7 +124,7 @@ export default function DashboardPage() {
           </>
         ) : (
           <>
-            <ThemeBreakdownChart data={summary?.byTheme || {}} />
+            <ThemeBreakdownChart data={summary?.byTheme || {}} windowDays={summary?.windowDays} />
             <SentimentTrendChart trends={trends} />
           </>
         )}

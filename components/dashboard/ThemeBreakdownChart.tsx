@@ -5,6 +5,7 @@ import { formatTheme, THEME_COLORS } from '@/lib/utils'
 
 interface ThemeBreakdownChartProps {
   data: Record<string, number>
+  windowDays?: number | null
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -17,7 +18,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   )
 }
 
-export default function ThemeBreakdownChart({ data }: ThemeBreakdownChartProps) {
+export default function ThemeBreakdownChart({ data, windowDays }: ThemeBreakdownChartProps) {
   const chartData = Object.entries(data)
     .map(([theme, count]) => ({ theme, count, label: formatTheme(theme) }))
     .sort((a, b) => b.count - a.count)
@@ -28,7 +29,9 @@ export default function ThemeBreakdownChart({ data }: ThemeBreakdownChartProps) 
     <div className="glass-card p-5">
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-white">Feedback by Theme</h3>
-        <p className="text-xs text-gray-500 mt-0.5">Volume breakdown by category</p>
+        <p className="text-xs text-gray-500 mt-0.5">
+          {windowDays ? `Classified items by category, last ${windowDays} days` : 'Classified items by category'}
+        </p>
       </div>
 
       {!hasData ? (
@@ -41,26 +44,27 @@ export default function ThemeBreakdownChart({ data }: ThemeBreakdownChartProps) 
           </div>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={256}>
-          <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="oklch(25% 0 0)" vertical={false} />
+        // Horizontal bars keep every category label whole at any width; rotated column labels clipped.
+        <ResponsiveContainer width="100%" height={Math.max(160, chartData.length * 34 + 24)}>
+          <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="oklch(25% 0 0)" horizontal={false} />
             <XAxis
-              dataKey="label"
-              tick={{ fill: '#6b7280', fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              angle={-20}
-              textAnchor="end"
-              height={40}
-            />
-            <YAxis
+              type="number"
               tick={{ fill: '#6b7280', fontSize: 11 }}
               axisLine={false}
               tickLine={false}
               allowDecimals={false}
             />
+            <YAxis
+              type="category"
+              dataKey="label"
+              width={116}
+              tick={{ fill: '#9ca3af', fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+            />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'oklch(25% 0 0 / 0.5)' }} />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={18}>
               {chartData.map((entry) => (
                 <Cell
                   key={entry.theme}

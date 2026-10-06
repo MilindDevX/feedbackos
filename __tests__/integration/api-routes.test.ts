@@ -13,7 +13,7 @@ jest.mock('@/auth', () => ({
 jest.mock('@/lib/db', () => ({
   db: {
     feedbackItem: {
-      create: jest.fn(),
+      create: jest.fn().mockResolvedValue({ id: 'fb-1' }),
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
       groupBy: jest.fn().mockResolvedValue([]),
@@ -28,7 +28,7 @@ jest.mock('@/lib/redis', () => ({
     incr: jest.fn().mockResolvedValue(1),
     expire: jest.fn(),
     get: jest.fn(),
-    setex: jest.fn(),
+    setex: jest.fn().mockResolvedValue('OK'),
     ping: jest.fn(),
   },
 }))
@@ -120,6 +120,40 @@ describe('GET /api/dashboard/summary – caching', () => {
 
     expect(res.status).toBe(200)
     expect(redis.setex).toHaveBeenCalled()
+  })
+
+  it('reuses one cache key for repeated default-window requests', async () => {
+    ;(auth as jest.Mock).mockResolvedValue(sessionMock)
+    ;(redis.get as jest.Mock).mockResolvedValue(null)
+    ;(redis.setex as jest.Mock).mockClear()
+
+    await dashboardSummaryGet(makeRequest('GET', 'http://localhost/api/dashboard/summary'))
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    await dashboardSummaryGet(makeRequest('GET', 'http://localhost/api/dashboard/summary'))
+
+    const keys = (redis.setex as jest.Mock).mock.calls.map((call) => call[0])
+    expect(keys).toHaveLength(2)
+    expect(keys[0]).toBe(keys[1])
+  })
+
+  it('reports negative share of classified feedback and the window it covers', async () => {
+    const { db } = await import('@/lib/db')
+    ;(auth as jest.Mock).mockResolvedValue(sessionMock)
+    ;(redis.get as jest.Mock).mockResolvedValue(null)
+    ;(db.feedbackItem.count as jest.Mock).mockResolvedValueOnce(10).mockResolvedValueOnce(3)
+    ;(db.classification.findMany as jest.Mock).mockResolvedValueOnce([
+      { theme: 'BUG', sentiment: 'NEGATIVE', productArea: 'API' },
+      { theme: 'BUG', sentiment: 'NEGATIVE', productArea: null },
+      { theme: 'PRAISE', sentiment: 'POSITIVE', productArea: null },
+      { theme: 'OTHER', sentiment: 'NEUTRAL', productArea: null },
+    ])
+
+    const res = await dashboardSummaryGet(makeRequest('GET', 'http://localhost/api/dashboard/summary'))
+    const json = await res.json()
+
+    expect(json.data.total).toBe(10)
+    expect(json.data.negativePercent).toBe(50)
+    expect(json.data.windowDays).toBe(30)
   })
 
   it('returns 401 for unauthenticated requests', async () => {
