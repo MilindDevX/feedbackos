@@ -69,7 +69,9 @@ Free private Vercel Blob store `feedbackos-csv-test` (iad1) created through Verc
 - 6 valid + 2 invalid rows: `PROCESSING`, totalRows 8, importedRows 6, invalidRows 2, private object deleted, completion 763 ms; all 6 rows `CLASSIFIED` within ~70 s.
 - 2,001 rows (181 KB): `FAILED` with "The CSV has 2,001 rows; the limit is 2,000.", zero rows inserted, object deleted, 213 ms.
 
-Not yet verified hosted: browser token exchange and a >4.5 MB browser upload (needs a signed-in preview session), duplicate completion callback (covered locally), cron repair (needs `CRON_SECRET` use), and a full 2,000-row import (would spend the shared Groq daily quota). Local: 148 tests green; rendered ingest page verified (start, oversize rejection, failed upload → cancel → retry allowed, axe clean at 1440/375; mobile layout limited by the pre-existing fixed sidebar).
+Signed-in browser check (2026-10-10, alias `feedbackos-csv-test-milind.vercel.app`, Milind signed in himself): a 4.65 MB / 2,000-row CSV uploaded through the real token endpoint with multipart to the private store (100%), Vercel Blob's completion callback ran, and the page showed "3 of 2,000 rows imported / 1,997 rows skipped"; all 3 classified. A second start during processing returned 409 "Another CSV import is still in progress for this workspace." Reloading mid-classification resumed the same import's progress; when its rows finished the page showed "Import finished" and the import closed (COMPLETED), freeing the slot. ~9 Groq calls.
+
+Still not verified hosted: duplicate completion callback (covered locally), cron repair (needs `CRON_SECRET` use), and a full 2,000-row classification run (would spend the shared Groq daily quota). Local: 148 tests green; rendered ingest page verified (start, oversize rejection, failed upload → cancel → retry allowed, axe clean at 1440/375; mobile layout limited by the pre-existing fixed sidebar).
 
 ## Acceptance
 
