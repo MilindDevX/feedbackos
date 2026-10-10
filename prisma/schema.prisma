@@ -28,6 +28,7 @@ model Organization {
   productAreas     ProductArea[]
   tags             Tag[]
   alertRules       AlertRule[]
+  csvImports       CsvImport[]
 }
 
 model User {
@@ -43,6 +44,7 @@ model User {
   sessions      Session[]
   memberships   OrganizationMember[]
   reviewActions ReviewAction[]
+  csvImports    CsvImport[]
 }
 
 model OrganizationMember {
@@ -109,6 +111,11 @@ model VerificationToken {
 // ─────────────────────────────────────────────────────
 
 model FeedbackItem {
+  classificationDispatchKind ClassificationDispatchKind?
+  classificationLeaseToken String?
+  classificationLeaseUntil DateTime?
+  classificationAttempts Int @default(0)
+  classificationNextAttemptAt DateTime?
   id             String         @id @default(cuid())
   organizationId String
   sourceId       String?
@@ -121,8 +128,11 @@ model FeedbackItem {
   submitterEmail String?
   submitterName  String?
   metadata       Json?
+  csvImportId    String?
+  csvRowNumber   Int?
 
   organization      Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  csvImport         CsvImport?       @relation(fields: [csvImportId], references: [id], onDelete: SetNull)
   ingestionSource   IngestionSource? @relation(fields: [sourceId], references: [id])
   classification    Classification?
   feedbackTags      FeedbackTag[]
@@ -130,10 +140,58 @@ model FeedbackItem {
   classificationLog ClassificationLog?
 
   @@unique([organizationId, source, externalId])
+  @@unique([csvImportId, csvRowNumber])
   @@index([organizationId, status])
+  @@index([status, classificationNextAttemptAt, classificationLeaseUntil], map: "feedback_items_classification_dispatch_idx")
   @@index([organizationId, submittedAt(sort: Desc)])
   @@index([organizationId, source])
   @@map("feedback_items")
+}
+
+// One live import per organization is enforced by the partial unique index
+// "csv_import_one_live_per_org" (UPLOADING, IMPORTING, PROCESSING) in the csv_import migration.
+model CsvImport {
+  id             String         @id @default(cuid())
+  organizationId String
+  uploaderId     String
+  state          CsvImportState @default(UPLOADING)
+  blobPathname   String         @unique
+  columnMapping  Json
+  byteSize       Int?
+  totalRows      Int?
+  importedRows   Int            @default(0)
+  invalidRows    Int            @default(0)
+  lastError      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  uploadedAt     DateTime?
+  completedAt    DateTime?
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploader      User           @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  feedbackItems FeedbackItem[]
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([state, updatedAt])
+}
+
+enum CsvImportState {
+  UPLOADING
+  IMPORTING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model ClassificationBudget {
+  id                String   @id
+  minuteWindowStart DateTime
+  minuteRequests    Int      @default(0)
+  minuteTokens      Int      @default(0)
+  dayWindowStart    DateTime
+  dayRequests       Int      @default(0)
+  dayTokens         Int      @default(0)
+  nextAllowedAt     DateTime
 }
 
 enum SourceType {
@@ -142,6 +200,11 @@ enum SourceType {
   CSV
   MANUAL
   API
+}
+
+enum ClassificationDispatchKind {
+  INTERACTIVE
+  BULK
 }
 
 enum FeedbackStatus {

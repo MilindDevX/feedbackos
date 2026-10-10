@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { getClassifyQueue } from '@/lib/queue'
+import { publishClassification } from '@/lib/classification/publish'
 import { successResponse, unauthorized, notFound, serverError, validationError, forbidden } from '@/lib/api-response'
 import { Theme, Sentiment } from '@prisma/client'
 import type { SessionUser } from '@/auth'
@@ -54,6 +54,7 @@ export async function PATCH(
   if (!session?.user?.id) return unauthorized()
   const user = session.user as SessionUser
   if (!user.organizationId) return forbidden()
+  if (user.role === 'VIEWER') return forbidden()
   const { id } = await params
 
   let body: unknown
@@ -75,19 +76,29 @@ export async function PATCH(
     })
 
     if (!item || item.organizationId !== user.organizationId) return notFound('Feedback item')
-    if (!['VIEWER'].includes(user.role || '')) {
-      // Allow all roles to review
-    }
 
-    if (action === 'RECLASSIFIED') {
-      await db.feedbackItem.update({ where: { id }, data: { status: 'PENDING' } })
-      const queue = getClassifyQueue()
-      await queue.add(`reclassify-${id}`, { feedbackItemId: id, organizationId: user.organizationId }, { priority: 1 })
-    } else {
-      const updates: Record<string, unknown> = { status: 'REVIEWED' }
-
-      if (action === 'OVERRIDDEN' && item.classification) {
-        await db.classification.update({
+    await db.$transaction(async (tx) => {
+      // Lock/invalidate the item before touching its classification, matching
+      // the consumer's write order so a human decision wins atomically.
+      await tx.feedbackItem.update({
+        where: { id, organizationId: user.organizationId },
+        data: action === 'RECLASSIFIED' ? {
+          status: 'PENDING',
+          classificationDispatchKind: 'INTERACTIVE',
+          classificationAttempts: 0,
+          classificationLeaseToken: null,
+          classificationLeaseUntil: null,
+          classificationNextAttemptAt: null,
+        } : {
+          status: 'REVIEWED',
+          classificationLeaseToken: null,
+          classificationLeaseUntil: null,
+          classificationNextAttemptAt: null,
+        },
+      })
+      const previous = await tx.classification.findUnique({ where: { feedbackId: id } })
+      if (action === 'OVERRIDDEN' && previous) {
+        await tx.classification.update({
           where: { feedbackId: id },
           data: {
             ...(theme && { theme }),
@@ -96,21 +107,26 @@ export async function PATCH(
         })
       }
 
-      await db.feedbackItem.update({ where: { id }, data: updates })
-    }
-
-    await db.reviewAction.create({
-      data: {
-        feedbackId: id,
-        reviewerId: session.user.id,
-        action,
-        previousTheme: item.classification?.theme,
-        newTheme: theme || item.classification?.theme,
-        previousSentiment: item.classification?.sentiment,
-        newSentiment: sentiment || item.classification?.sentiment,
-        note,
-      },
+      await tx.reviewAction.create({
+        data: {
+          feedbackId: id,
+          reviewerId: user.id,
+          action,
+          previousTheme: previous?.theme,
+          newTheme: theme || previous?.theme,
+          previousSentiment: previous?.sentiment,
+          newSentiment: sentiment || previous?.sentiment,
+          note,
+        },
+      })
     })
+    if (action === 'RECLASSIFIED') {
+      try {
+        await publishClassification({ feedbackItemId: id, organizationId: user.organizationId }, 0, Date.now())
+      } catch {
+        console.warn('[PATCH /api/feedback/:id] Classification publish failed; item remains pending')
+      }
+    }
 
     return successResponse({ id, action, status: action === 'RECLASSIFIED' ? 'PENDING' : 'REVIEWED' })
   } catch (err) {

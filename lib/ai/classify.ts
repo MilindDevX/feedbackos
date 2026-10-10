@@ -1,7 +1,7 @@
 import { openai } from './client'
 import type { ChatCompletionCreateParamsNonStreaming } from 'openai/resources/chat/completions'
 import { ClassificationOutput, ClassificationOutputSchema, themeToEnum, sentimentToEnum } from './schemas'
-import { buildSystemPrompt, buildUserPrompt } from './prompts'
+import { prepareClassificationRequest, CLASSIFICATION_COMPLETION_TOKENS, type PreparedClassificationRequest } from './prompts'
 import { db } from '../db'
 import { FeedbackStatus, Theme, Sentiment } from '@prisma/client'
 
@@ -19,17 +19,18 @@ export interface ClassificationResult {
 export async function classifyFeedback(
   feedbackItemId: string,
   rawText: string,
-  productAreas: string[]
+  productAreas: string[],
+  request: PreparedClassificationRequest | null = prepareClassificationRequest(rawText, productAreas)
 ): Promise<ClassificationResult> {
   // Short text guard: skip LLM for very short inputs
   const wordCount = rawText.trim().split(/\s+/).length
-  if (wordCount < 5) {
+  if (wordCount < 5 || !request) {
     const fallback: ClassificationOutput = {
       theme: 'other',
       sentiment: 'neutral',
       product_area: productAreas[0] || 'Other',
       confidence: 0.3,
-      summary: 'Feedback too short to classify reliably',
+      summary: request ? 'Feedback too short to classify reliably' : 'Product area configuration exceeds the AI request budget',
       requires_human_review: true,
     }
     return {
@@ -42,8 +43,7 @@ export async function classifyFeedback(
     }
   }
 
-  const systemPrompt = buildSystemPrompt()
-  const userPrompt = buildUserPrompt(rawText, productAreas)
+  const { systemPrompt, userPrompt } = request
 
   const startTime = Date.now()
 
@@ -53,7 +53,7 @@ export async function classifyFeedback(
   const baseParams: ChatCompletionCreateParamsNonStreaming = {
     model: MODEL,
     temperature: 0,
-    max_tokens: 512,
+    max_tokens: CLASSIFICATION_COMPLETION_TOKENS,
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: systemPrompt },
@@ -79,6 +79,7 @@ export async function classifyFeedback(
 
   const parsed = JSON.parse(rawContent)
   const validated = ClassificationOutputSchema.parse(parsed)
+  if (request.truncated) validated.requires_human_review = true
   const fallbackProductArea = productAreas.find((area) => area.toLowerCase().includes('other'))
 
   if (validated.product_area === 'Other' && fallbackProductArea) {

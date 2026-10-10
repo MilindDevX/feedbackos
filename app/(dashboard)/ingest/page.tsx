@@ -1,14 +1,24 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { useDropzone } from 'react-dropzone'
+import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from 'react'
+import { useDropzone, type FileRejection } from 'react-dropzone'
+import { upload } from '@vercel/blob/client'
 import { Upload, FileText, X, Loader2, CheckCircle2, AlertCircle, Send, ChevronRight } from 'lucide-react'
+import { detectCsvColumns } from '@/lib/integrations/csv'
 
-interface QueueStatus {
-  pending: number
-  classifying: number
+const MAX_CSV_BYTES = 20 * 1024 * 1024
+const ACTIVE_IMPORT_KEY = 'feedbackos.activeCsvImport'
+
+interface ImportStatus {
+  state: 'UPLOADING' | 'IMPORTING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  totalRows: number | null
+  importedRows: number
+  invalidRows: number
+  lastError: string | null
+  queued: number
+  classified: number
   needsReview: number
-  total: number
+  failed: number
 }
 
 interface ColumnMapping {
@@ -19,6 +29,12 @@ interface ColumnMapping {
 
 type UploadStep = 'idle' | 'mapping' | 'uploading' | 'processing' | 'done' | 'error'
 
+const readStoredImport = () => { try { return localStorage.getItem(ACTIVE_IMPORT_KEY) } catch { return null } }
+const subscribeToNothing = () => () => {}
+const storeImport = (id: string | null) => {
+  try { if (id) localStorage.setItem(ACTIVE_IMPORT_KEY, id); else localStorage.removeItem(ACTIVE_IMPORT_KEY) } catch { /* private mode */ }
+}
+
 export default function IngestPage() {
   // Manual entry state
   const [manualText, setManualText] = useState('')
@@ -26,31 +42,41 @@ export default function IngestPage() {
   const [manualSuccess, setManualSuccess] = useState(false)
   const [manualError, setManualError] = useState('')
 
-  // CSV upload state
+  // CSV import state
   const [file, setFile] = useState<File | null>(null)
   const [detectedColumns, setDetectedColumns] = useState<string[]>([])
   const [mapping, setMapping] = useState<ColumnMapping>({ rawText: '', submittedAt: '', submitterEmail: '' })
   const [uploadStep, setUploadStep] = useState<UploadStep>('idle')
-  const [uploadResult, setUploadResult] = useState<{ itemsQueued: number; errors: Array<{ row: number; reason: string }> } | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState('')
-  const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null)
+  const [importId, setImportId] = useState<string | null>(null)
+  const [importStatus, setImportStatus] = useState<ImportStatus | null>(null)
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Poll queue status during processing
+  // Resume an import that is still running after a reload or a closed tab (null during server render).
+  const storedImportId = useSyncExternalStore(subscribeToNothing, readStoredImport, () => null)
+  const activeImportId = importId ?? storedImportId
+  const step: UploadStep = uploadStep === 'idle' && storedImportId ? 'processing' : uploadStep
+
+  // Poll this import's own status; finishing the upload does not mean classification is done.
   useEffect(() => {
-    if (uploadStep === 'processing') {
-      pollingRef.current = setInterval(async () => {
-        const res = await fetch('/api/feedback/queue-status')
-        const json = await res.json()
-        setQueueStatus(json.data)
-        if (json.data.pending === 0 && json.data.classifying === 0) {
-          setUploadStep('done')
-          clearInterval(pollingRef.current!)
-        }
-      }, 3000)
+    if (step !== 'processing' || !activeImportId) return
+    const poll = async () => {
+      const res = await fetch(`/api/feedback/imports/${activeImportId}`)
+      if (res.status === 404) { storeImport(null); setUploadStep('idle'); return }
+      if (!res.ok) return
+      const status: ImportStatus = await res.json()
+      setImportStatus(status)
+      if (status.state === 'COMPLETED' || status.state === 'FAILED') {
+        storeImport(null)
+        if (status.state === 'FAILED') { setUploadError(status.lastError || 'The import failed.'); setUploadStep('error') }
+        else setUploadStep('done')
+      }
     }
+    poll()
+    pollingRef.current = setInterval(poll, 5000)
     return () => { if (pollingRef.current) clearInterval(pollingRef.current) }
-  }, [uploadStep])
+  }, [step, activeImportId])
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const f = acceptedFiles[0]
@@ -58,59 +84,79 @@ export default function IngestPage() {
     setFile(f)
     setUploadStep('mapping')
     setUploadError('')
-
-    // Detect columns
-    const formData = new FormData()
-    formData.append('file', f)
-    formData.append('detectColumns', 'true')
-    const res = await fetch('/api/feedback/upload', { method: 'POST', body: formData })
-    const json = await res.json()
-    const cols: string[] = json.data?.columns || []
+    // Headers are read in the browser; the file itself goes straight to private storage later.
+    const cols = detectCsvColumns(await f.slice(0, 64 * 1024).text())
     setDetectedColumns(cols)
-    // Auto-map common column names
     const textCol = cols.find(c => /text|feedback|content|body|message/i.test(c)) || cols[0] || ''
     const dateCol = cols.find(c => /date|time|created|submitted/i.test(c)) || ''
     const emailCol = cols.find(c => /email|mail/i.test(c)) || ''
     setMapping({ rawText: textCol, submittedAt: dateCol, submitterEmail: emailCol })
   }, [])
 
+  const onDropRejected = useCallback((rejections: FileRejection[]) => {
+    const code = rejections[0]?.errors[0]?.code
+    setUploadError(code === 'file-too-large' ? 'That file is larger than 20 MiB.' : 'Choose a single .csv file.')
+    setUploadStep('error')
+  }, [])
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: { 'text/csv': ['.csv'] },
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024,
+    maxSize: MAX_CSV_BYTES,
   })
 
   const handleUpload = async () => {
     if (!file || !mapping.rawText) return
     setUploadStep('uploading')
+    setUploadProgress(0)
     setUploadError('')
 
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('columnMapping', JSON.stringify(mapping))
-
-    const res = await fetch('/api/feedback/upload', { method: 'POST', body: formData })
-    const json = await res.json()
-
-    if (!res.ok) {
-      setUploadError(json.error || 'Upload failed')
+    const columnMapping = Object.fromEntries(Object.entries(mapping).filter(([, column]) => column))
+    const start = await fetch('/api/feedback/imports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ columnMapping }),
+    })
+    const started = await start.json()
+    if (!start.ok) {
+      setUploadError(started.error || 'The import could not be started.')
       setUploadStep('error')
       return
     }
 
-    setUploadResult(json.data)
+    try {
+      await upload(started.pathname, file, {
+        access: 'private',
+        handleUploadUrl: '/api/feedback/imports/blob',
+        clientPayload: JSON.stringify({ importId: started.importId }),
+        contentType: 'text/csv',
+        multipart: file.size > 5 * 1024 * 1024,
+        onUploadProgress: ({ percentage }) => setUploadProgress(Math.round(percentage)),
+      })
+    } catch {
+      // Release the workspace's single live-import slot so the user can retry right away.
+      await fetch(`/api/feedback/imports/${started.importId}/cancel`, { method: 'POST' }).catch(() => undefined)
+      setUploadError('The upload was interrupted. Please try again.')
+      setUploadStep('error')
+      return
+    }
+    storeImport(started.importId)
+    setImportId(started.importId)
     setUploadStep('processing')
   }
 
   const resetUpload = () => {
+    storeImport(null)
     setFile(null)
     setDetectedColumns([])
     setMapping({ rawText: '', submittedAt: '', submitterEmail: '' })
     setUploadStep('idle')
-    setUploadResult(null)
+    setUploadProgress(0)
     setUploadError('')
-    setQueueStatus(null)
+    setImportId(null)
+    setImportStatus(null)
   }
 
   const handleManualSubmit = async (e: React.FormEvent) => {
@@ -148,10 +194,10 @@ export default function IngestPage() {
       <section className="glass-card p-6 space-y-5">
         <div>
           <h2 className="text-base font-semibold text-white">Bulk CSV Upload</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Up to 500 rows per file, 10MB max</p>
+          <p className="text-sm text-gray-500 mt-0.5">Up to 2,000 rows and 20 MiB per CSV. On the free AI tier, classification runs gradually — about 14 hours for 2,000 rows.</p>
         </div>
 
-        {uploadStep === 'idle' && (
+        {step === 'idle' && (
           <div
             {...getRootProps()}
             className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${
@@ -160,17 +206,17 @@ export default function IngestPage() {
                 : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/30'
             }`}
           >
-            <input {...getInputProps()} />
+            <input {...getInputProps({ 'aria-label': 'Choose a CSV file to import' })} />
             <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragActive ? 'text-brand-400' : 'text-gray-600'}`} />
             <p className="text-gray-300 font-medium">
               {isDragActive ? 'Drop your CSV here' : 'Drag & drop your CSV file'}
             </p>
             <p className="text-gray-500 text-sm mt-1">or click to browse</p>
-            <p className="text-gray-600 text-xs mt-3">Accepted: .csv | Required column: text/feedback/content</p>
+            <p className="text-gray-600 text-xs mt-3">Accepted: .csv up to 20 MiB | You choose the feedback text column next</p>
           </div>
         )}
 
-        {uploadStep === 'mapping' && file && (
+        {step === 'mapping' && file && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/60 border border-gray-700">
               <FileText className="w-5 h-5 text-brand-400 flex-shrink-0" />
@@ -178,8 +224,8 @@ export default function IngestPage() {
                 <p className="text-sm text-white font-medium truncate">{file.name}</p>
                 <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB · {detectedColumns.length} columns detected</p>
               </div>
-              <button onClick={resetUpload} className="text-gray-500 hover:text-gray-300">
-                <X className="w-4 h-4" />
+              <button onClick={resetUpload} aria-label="Remove file and start over" className="text-gray-500 hover:text-gray-300">
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
 
@@ -191,8 +237,9 @@ export default function IngestPage() {
                 { key: 'submitterEmail', label: 'Submitter email' },
               ].map(({ key, label, required }) => (
                 <div key={key} className="flex items-center gap-3">
-                  <label className="w-36 text-xs text-gray-400 flex-shrink-0">{label}</label>
+                  <label htmlFor={`csv-column-${key}`} className="w-36 text-xs text-gray-400 flex-shrink-0">{label}</label>
                   <select
+                    id={`csv-column-${key}`}
                     value={mapping[key as keyof ColumnMapping]}
                     onChange={(e) => setMapping(m => ({ ...m, [key]: e.target.value }))}
                     className="flex-1 px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500"
@@ -215,54 +262,63 @@ export default function IngestPage() {
           </div>
         )}
 
-        {uploadStep === 'uploading' && (
+        {step === 'uploading' && (
           <div className="flex flex-col items-center gap-3 py-8">
             <Loader2 className="w-8 h-8 text-brand-400 animate-spin" />
-            <p className="text-gray-300 text-sm">Uploading and parsing CSV…</p>
+            <p className="text-gray-300 text-sm">Uploading privately… {uploadProgress}%</p>
+            <div className="w-full max-w-xs h-1.5 rounded-full bg-gray-800 overflow-hidden" role="progressbar" aria-valuenow={uploadProgress} aria-valuemin={0} aria-valuemax={100} aria-label="Upload progress">
+              <div className="h-full bg-brand-500 transition-all" style={{ width: `${uploadProgress}%` }} />
+            </div>
           </div>
         )}
 
-        {uploadStep === 'processing' && uploadResult && (
+        {step === 'processing' && (
           <div className="space-y-4">
-            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle2 className="w-4 h-4 text-green-400" />
-                <p className="text-green-400 font-medium text-sm">{uploadResult.itemsQueued} items queued for classification</p>
+            {!importStatus || importStatus.state === 'UPLOADING' || importStatus.state === 'IMPORTING' ? (
+              <div className="flex items-center gap-2 p-4 rounded-lg bg-gray-800/60 border border-gray-700 text-sm text-gray-300">
+                <Loader2 className="w-4 h-4 animate-spin text-brand-400" />
+                Upload received — importing rows…
               </div>
-              {uploadResult.errors.length > 0 && (
-                <p className="text-amber-400 text-xs">{uploadResult.errors.length} rows skipped</p>
-              )}
-            </div>
+            ) : (
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-400" />
+                  <p className="text-green-400 font-medium text-sm">
+                    {importStatus.importedRows.toLocaleString()} of {(importStatus.totalRows ?? 0).toLocaleString()} rows imported
+                  </p>
+                </div>
+                {importStatus.invalidRows > 0 && (
+                  <p className="text-amber-400 text-xs mt-1">{importStatus.invalidRows.toLocaleString()} rows skipped (empty text, bad date or email)</p>
+                )}
+              </div>
+            )}
 
-            {queueStatus && (
+            {importStatus && importStatus.state === 'PROCESSING' && (
               <div className="space-y-2">
-                <p className="text-xs text-gray-500">Classification progress (updates every 3s)</p>
-                <div className="grid grid-cols-3 gap-3">
+                <p className="text-xs text-gray-500">Classification progress for this import (updates every 5s; safe to close this tab)</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
-                    { label: 'Pending', value: queueStatus.pending, color: 'text-gray-400' },
-                    { label: 'Classifying', value: queueStatus.classifying, color: 'text-purple-400' },
-                    { label: 'Total', value: queueStatus.total, color: 'text-white' },
+                    { label: 'Waiting', value: importStatus.queued, color: 'text-gray-400' },
+                    { label: 'Classified', value: importStatus.classified, color: 'text-green-400' },
+                    { label: 'Needs review', value: importStatus.needsReview, color: 'text-amber-400' },
+                    { label: 'Failed', value: importStatus.failed, color: 'text-red-400' },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="p-3 rounded-lg bg-gray-800 text-center">
-                      <p className={`text-xl font-bold ${color}`}>{value}</p>
+                      <p className={`text-xl font-bold ${color}`}>{value.toLocaleString()}</p>
                       <p className="text-xs text-gray-500">{label}</p>
                     </div>
                   ))}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  AI is classifying your feedback…
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {uploadStep === 'done' && (
+        {step === 'done' && (
           <div className="text-center space-y-3 py-4">
             <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto" />
-            <p className="text-white font-semibold">All done!</p>
-            <p className="text-gray-400 text-sm">Your feedback has been classified and is ready to view.</p>
+            <p className="text-white font-semibold">Import finished</p>
+            <p className="text-gray-400 text-sm">Every imported row has been classified; low-confidence ones are waiting in review.</p>
             <div className="flex gap-3 justify-center">
               <a href="/feedback" className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm transition-colors">
                 View Feedback →
@@ -274,7 +330,7 @@ export default function IngestPage() {
           </div>
         )}
 
-        {uploadStep === 'error' && (
+        {step === 'error' && (
           <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-red-400" />

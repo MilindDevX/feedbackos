@@ -5,7 +5,6 @@ import { createBullMQConnection } from './redis'
 export const QUEUE_NAMES = {
   CLASSIFY: 'classify-feedback',
   ZENDESK_SYNC: 'zendesk-sync',
-  CSV_IMPORT: 'csv-import',
 } as const
 
 // ─── Job Payloads ─────────────────────────────────────────────────────────────
@@ -21,20 +20,10 @@ export interface ZendeskSyncPayload {
   startTime?: string
 }
 
-export interface CsvImportPayload {
-  organizationId: string
-  rows: Array<{
-    rawText: string
-    submittedAt?: string
-    submitterEmail?: string
-    externalId?: string
-  }>
-}
 
 // ─── Queue Instances ──────────────────────────────────────────────────────────
 let classifyQueue: Queue | null = null
 let zendeskQueue: Queue | null = null
-let csvQueue: Queue | null = null
 
 export function getClassifyQueue(): Queue {
   if (!classifyQueue) {
@@ -64,19 +53,4 @@ export function getZendeskQueue(): Queue {
     })
   }
   return zendeskQueue
-}
-
-export function getCsvQueue(): Queue {
-  if (!csvQueue) {
-    csvQueue = new Queue(QUEUE_NAMES.CSV_IMPORT, {
-      connection: createBullMQConnection(),
-      defaultJobOptions: {
-        attempts: 2,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: { count: 20 },
-        removeOnFail: { count: 100 },
-      },
-    })
-  }
-  return csvQueue
 }

@@ -58,11 +58,12 @@ export function buildSystemPrompt(): string {
   return SYSTEM_PROMPT
 }
 
-export function buildUserPrompt(rawText: string, productAreas: string[]): string {
-  const MAX_CHARS = 8000
+export const MAX_CLASSIFICATION_TEXT_CHARS = 8000
+
+export function buildUserPrompt(rawText: string, productAreas: string[], maxChars = MAX_CLASSIFICATION_TEXT_CHARS): string {
   const truncated =
-    rawText.length > MAX_CHARS
-      ? `${rawText.slice(0, MAX_CHARS)}\n[Content truncated for classification]`
+    rawText.length > maxChars
+      ? `${rawText.slice(0, maxChars)}\n[Content truncated for classification]`
       : rawText
 
   return `AVAILABLE PRODUCT AREAS FOR THIS ORGANIZATION:
@@ -74,4 +75,35 @@ ${truncated}
 """
 
 Classify this feedback accurately and completely.`
+}
+
+export const CLASSIFICATION_COMPLETION_TOKENS = 512
+
+export interface PreparedClassificationRequest {
+  systemPrompt: string
+  userPrompt: string
+  reservedTokens: number
+  truncated: boolean
+}
+
+export function prepareClassificationRequest(rawText: string, productAreas: string[]): PreparedClassificationRequest | null {
+  const systemPrompt = buildSystemPrompt()
+  // Byte-level tokenization cannot use more text tokens than UTF-8 bytes.
+  // Include completion capacity and message framing; account telemetry remains a preview gate.
+  const reserve = (userPrompt: string) => Buffer.byteLength(systemPrompt) + Buffer.byteLength(userPrompt)
+    + CLASSIFICATION_COMPLETION_TOKENS + 64
+  let maxChars = Math.min(rawText.length, MAX_CLASSIFICATION_TEXT_CHARS)
+  if (reserve(buildUserPrompt(rawText, productAreas, 0)) > 7000) return null
+  if (reserve(buildUserPrompt(rawText, productAreas, maxChars)) > 7000) {
+    let low = 0
+    let high = maxChars
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2)
+      if (reserve(buildUserPrompt(rawText, productAreas, mid)) <= 7000) low = mid
+      else high = mid - 1
+    }
+    maxChars = low
+  }
+  const userPrompt = buildUserPrompt(rawText, productAreas, maxChars)
+  return { systemPrompt, userPrompt, reservedTokens: reserve(userPrompt), truncated: rawText.length > maxChars }
 }

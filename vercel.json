@@ -1,0 +1,27 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app/api/queues/classify/route.ts": {
+      "maxDuration": 120,
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "feedback-classify",
+          "retryAfterSeconds": 60
+        }
+      ]
+    },
+    "app/api/cron/classification/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/feedback/imports/blob/route.ts": {
+      "maxDuration": 120
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/classification",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}

@@ -15,8 +15,8 @@ export const openai =
       'HTTP-Referer': process.env.NEXTAUTH_URL || 'http://localhost:3000',
       'X-Title': 'FeedbackOS',
     },
-    // The SDK is the single retry owner and honors Retry-After for rate limits.
-    maxRetries: 2,
+    // Neon/Queue owns retries; hidden SDK calls would bypass the shared AI budget.
+    maxRetries: 0,
     timeout: 30000,
   })
 

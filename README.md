@@ -1,181 +1,56 @@
-# FeedbackOS — Customer Feedback Triage with AI Tagging
+# FeedbackOS — Customer Feedback Triage
 
-> **Eliminate 5–10 hours/week of manual PM tagging work.** FeedbackOS ingests customer feedback from Zendesk, Intercom, CSV uploads, and manual entry — automatically classifying each item by theme, sentiment, and product area using LLM structured outputs — and surfaces trends on a real-time analytics dashboard.
+FeedbackOS categorizes customer feedback by theme, sentiment and product area, then routes uncertain results to human review. AI output is parsed as JSON and validated with Zod. Synthetic evaluation fixtures do not establish production accuracy or measured time savings.
 
----
+## Demo and release status
 
-## 🚀 Live Demo
+[Live demo](https://feedbackos.vercel.app). The demo dataset contains 48 feedback items. Local changes described below have not been deployed; hosted processing must pass the preview gate before production release.
 
-**Demo URL:** [https://feedbackos.vercel.app](https://feedbackos.vercel.app)
-**Demo Login:** `demo@feedbackos.app` (email magic link — no Google account required)
+## Classification architecture
 
-The demo ships with **48 pre-classified feedback items** across all 6 themes and 4 sentiment categories, ready to explore.
+Manual submissions and reclassification persist a PENDING FeedbackItem in PostgreSQL, then publish only its ID and organization ID to the feedback-classify Vercel Queue. The protected Function consumer validates the message, checks ownership/status, reserves provider capacity and a two-minute item lease, calls the classifier, and saves the result only while that lease is current. Reviewed items and newer reclassifications cannot be overwritten by an old result.
 
----
+Neon owns the backlog, attempt count, retry time and provider budget. A failed Queue publication leaves the item pending and produces an honest pending API response. Retries are limited to three attempts; provider Retry-After delays apply across consumers. AI SDK retries are disabled. Failed or timed-out final attempts become CLASSIFICATION_ERROR.
 
-## 🏗 Architecture
+The consumer is registered through queue/v2beta in [vercel.json](vercel.json), which makes it inaccessible as ordinary public HTTP on Vercel. An authenticated daily recovery cron at /api/cron/classification republishes up to 100 due items, manual feedback first, including expired leases. Queue delivery provides prompt processing; cron repairs missed wakeups and abandoned or stuck CSV imports. After each claim the consumer publishes a delayed watchdog wakeup (lease + 30 s), so a consumer that crashes mid-call is retried in about 2.5 minutes without relying on Queue redelivery (verified in an isolated preview). An invocation that finishes its own item keeps draining the oldest due items at the provider pace for up to 75 s, because paced Queue retries otherwise arrive in lockstep about once a minute.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                       Next.js 14 App                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │  Auth Layer  │  │  API Routes  │  │  Frontend (React)    │  │
-│  │  NextAuth v5 │  │  /api/...    │  │  Dashboard, Table,   │  │
-│  │  Google/Email│  │  Zod Validated│ │  Slide-over, Charts  │  │
-│  └──────────────┘  └──────┬───────┘  └──────────────────────┘  │
-└─────────────────────────────┼───────────────────────────────────┘
-                              │ enqueue
-              ┌───────────────▼───────────────┐
-              │        BullMQ + Redis          │
-              │  classify-feedback queue       │
-              │  zendesk-sync queue            │
-              │  csv-import queue              │
-              └───────────────┬───────────────┘
-                              │ process
-              ┌───────────────▼───────────────┐
-              │    Background Worker Process   │
-              │  jobs/worker.ts               │
-              │  ┌─────────────────────────┐  │
-              │  │  classifyFeedback()     │  │
-              │  │  openai/gpt-oss-120b       │  │
-              │  │  via Groq API           │  │
-              │  └─────────────────────────┘  │
-              └───────────────┬───────────────┘
-                              │ persist
-              ┌───────────────▼───────────────┐
-              │        PostgreSQL DB           │
-              │  (Prisma ORM, Redis cache)     │
-              └───────────────────────────────┘
-```
+The initial conservative budget is five requests/minute, 7,000 reserved tokens/minute, 1,000 requests/day and 200,000 reserved tokens/day; bulk CSV uses only the first 900 daily request slots. Reservation includes UTF-8 bytes of the complete system/user prompts, a framing allowance and 512 completion tokens; once the provider reports actual usage, the unused remainder is refunded to the same minute/day windows (a short item reserves ~3,800 tokens but uses ~900). Measured preview throughput is about four classifications per minute. Prompt text is truncated further when necessary; truncated or oversized requests require human review. Daily counters reset at UTC midnight. The token-counter migration conservatively exhausts the current day's allowance for an existing budget with prior requests, since its historical token reservations are unknown. Actual usage and provider reset behavior must still be verified against Groq telemetry. Different API keys share organization limits; independent deployments do not share this database counter. The original feedback stays in the database.
 
-**Key design decisions:**
-- **Two-process architecture:** Next.js (HTTP) and BullMQ Worker run as separate processes so AI classification never blocks API response times.
-- **Groq for AI:** Routes through Groq to `openai/gpt-oss-120b` for ultra-low latency inference.
-- **Redis caching:** Dashboard summary cached for 5 minutes, protecting Postgres from repeated aggregation queries.
-- **AES-256-GCM encryption:** All integration credentials (Zendesk API tokens) are encrypted at rest before storage.
+Dispatcher ownership and priority are explicit, not inferred from the original ingestion source: manual submissions and human-requested reclassifications are INTERACTIVE; CSV import rows are BULK and their wakeups are staggered 24 s apart. Unmarked integration work stays on its existing processing path. Bulk reservation yields to due interactive work. Human review atomically invalidates the lease, saves the correction and records its audit action. Queue retries use lease-specific generations and fit the SDK's visibility/expiry bounds; expired messages leave the durable backlog recoverable.
 
----
+Redis remains required for dashboard caching, HTTP rate limiting and the remaining BullMQ paths. Zendesk and Intercom still require jobs/worker.ts; their hosted migration is deferred. CSV imports no longer use BullMQ or the worker.
 
-## 📊 How It Works — Real Example
+## Setup
 
-**Input:** Raw customer feedback
-```
-"The new dashboard is incredibly slow when I try to load more than 50 feedback 
-items. I have to wait 10 seconds for it to render. Please fix this."
-```
+Requirements: Node.js 20.9+, PostgreSQL 14+, Redis 6+ and a Groq key. The repository uses Next.js 16, React 19 and Prisma 5.
 
-**Output:** Structured classification (persisted to DB in ~1.2s)
-```json
-{
-  "theme": "USABILITY_ISSUE",
-  "sentiment": "NEGATIVE",
-  "product_area": "Dashboard",
-  "confidence": 0.94,
-  "summary": "Dashboard renders slowly with 50+ feedback items loaded",
-  "requires_human_review": false
-}
-```
+Install with `pnpm install --frozen-lockfile`, copy .env.example to .env, and configure database, Redis, Groq, authentication, email and encryption values privately. Never commit .env. Set CRON_SECRET separately for each hosted environment. Queue authentication uses Vercel's environment identity.
 
-The classified item immediately appears in the feedback table with the correct badge, and updates the dashboard trend charts.
+For a new disposable/local database, run `npm run db:migrate` then `npm run db:seed`. Run the web app with `npm run dev:next`. Local Queue development requires a linked Vercel project and development identity through Vercel's documented development setup. An unlinked next dev session cannot publish Queue messages; the API saves feedback pending for recovery. `npm run dev` also starts the BullMQ worker for CSV/Zendesk/Intercom.
 
----
+## Ingestion and review
 
-## ⚙️ Setup & Installation
+- Manual feedback: submit through Ingest. HTTP 202 means queued or durably pending, not classified.
+- Review: accept, override or reclassify a result. Viewers cannot perform review actions.
+- CSV: the browser reads headers locally, starts an import (`POST /api/feedback/imports`), then uploads directly to a **private** Vercel Blob store through an authenticated token endpoint (`/api/feedback/imports/blob`). Limits: 20 MiB and 2,000 data rows; over-limit or malformed files are rejected with zero rows inserted. Vercel Blob's signed completion callback validates and inserts rows idempotently, deletes the file, and queues row IDs. One live import per workspace (database partial unique index). `GET /api/feedback/imports/:id` reports that import's progress. 2,000 rows take roughly 14 hours on the free AI tier. Requires a private Blob store (`BLOB_READ_WRITE_TOKEN`) and a reachable callback URL, so end-to-end uploads cannot complete on localhost.
+- Zendesk/Intercom: existing integration code is retained; hosted worker migration is deferred.
 
-### Prerequisites
-- Node.js 18+
-- PostgreSQL 14+ (local or cloud)
-- Redis 6+ (local or Upstash)
-- Groq API key (free at [groq.com](https://groq.com))
+## Verification
 
-### 1. Clone and install
-```bash
-git clone <repo-url>
-cd feedbackos
-npm install
-```
+Run `npm test -- --runInBand`, `npx tsc --noEmit`, `npm run lint` and `npm run build`.
 
-### 2. Configure environment
-```bash
-cp .env.example .env
-```
+Database integration tests run only when TEST_DATABASE_URL is set and exactly matches DATABASE_URL. Both must point to a disposable PostgreSQL database with migrations applied. Never use production. Consumer tests replace the external AI call while exercising real database state, leases and budgets.
 
-Edit `.env` and fill in:
-| Variable | How to get it |
-|---|---|
-| `DATABASE_URL` | Local Postgres or Neon/Supabase free tier |
-| `REDIS_URL` | Local Redis or Upstash free tier (`rediss://` in prod) |
-| `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) |
-| `NEXTAUTH_SECRET` | `openssl rand -base64 32` |
-| `ENCRYPTION_KEY` | `openssl rand -hex 32` |
+Existing unrelated UI/auth lint findings are reported separately from changed-file checks. Builds need network access to fetch the Google font.
 
-### 3. Initialize database & seed demo data
-```bash
-npm run db:migrate   # Apply schema migrations
-npm run db:seed      # Load 48 realistic demo feedback items
-```
+## Preview and production release
 
-### 4. Start the application
-```bash
-npm run dev
-```
+Follow [the concrete preview checklist](docs/serverless-classification-preview.md) with isolated database/environment values. Verify manual submission, reclassification, concurrent messages, retries, expired leases, cron recovery, HTTP protection and measured Groq pacing before production. Hobby cron runs daily and is scheduled automatically only for production deployments; invoke its endpoint explicitly during controlled preview verification.
 
-This starts **two processes simultaneously**:
-- **Next.js dev server** on `http://localhost:3000` (cyan logs)
-- **BullMQ background worker** (yellow logs)
+Use `npm run build` for preview. Apply migrations explicitly to the disposable preview database. The `deploy:build` script includes prisma migrate deploy and must not be used against an inherited production connection. Vercel's ordinary build does not apply migrations.
 
-### 5. Log in
-Open `http://localhost:3000` and sign in with:
-- **Email:** `demo@feedbackos.app`
-- Click the magic link in your email (or check server logs in dev)
+The six-theme migration maps classifications/review history/alert rules from retired labels. Retired-theme CLASSIFIED, CLASSIFYING and REVIEWED items move to NEEDS_REVIEW. Retired-theme alert rules are disabled before remapping; review their broader meaning before reactivation.
 
----
+Production requires the separately approved brief maintenance cutover: restore-test a fresh Neon snapshot, pause consumers, verify no work is in flight, apply migrations, deploy matching code and verify processing, review queue, alert rules and migration state. Old/new enum schemas are not mutually compatible. Snapshot restore requires separate approval because it can discard later writes.
 
-## 🔌 Integrations
-
-### Zendesk
-Go to **Settings → Integrations → Zendesk**, enter your subdomain, admin email, and API token. Click **Sync Now** to import tickets.
-
-### Intercom (Webhook)
-Go to **Settings → Integrations → Intercom**. Copy the webhook URL and paste it into your Intercom developer dashboard under **Settings → Webhooks**. Subscribe to `conversation.created` and `conversation.replied` events.
-
-### CSV Upload
-Go to **Ingest → Upload CSV**. Drag and drop any CSV up to 5MB with up to 500 rows. The system auto-detects column names and lets you map them to the correct fields.
-
----
-
-## 🧪 Testing
-
-```bash
-# Run all unit tests
-npm run test:unit
-
-# Run E2E tests (requires app to be running)
-npm run test:e2e
-```
-
----
-
-## 🚀 Deployment (Vercel & Render)
-
-**Frontend & API (Vercel)**
-Deploy the repository directly to Vercel. Ensure all environment variables are set in your Vercel project settings.
-
-**Background Worker (Render)**
-Set the **build command** to:
-```bash
-npm run deploy:build
-```
-
-This runs `prisma generate && prisma migrate deploy && next build` for the worker. The Vercel build does not run migrations, so coordinate the web and worker releases when changing database enums.
-
-The six-theme migration maps existing classifications, review history, and alert rules to the new labels. Items with a `PRICING`, `ONBOARDING`, or `PERFORMANCE` classification in `CLASSIFIED`, `CLASSIFYING`, or `REVIEWED` status move to `NEEDS_REVIEW`; items already awaiting review stay there. Alert rules targeting those retired themes are disabled before remapping; review their broader new meaning before reactivating them.
-
-For this enum change, use a brief maintenance cutover: create and restore-test a Neon snapshot, pause the worker and scheduled consumers, confirm no items are `PENDING` or `CLASSIFYING`, apply the migration, then deploy matching web and worker code. Verify the migration record, review queue, disabled alert rules, worker logs, and public health before ending maintenance. The old and new app versions are not compatible with both enum schemas, so brief web errors are possible during the cutover. Do not restore a production snapshot without separately approving the potential loss of writes made since it was taken.
-
-Start the **worker** as a separate service with:
-```bash
-npm run worker
-```
-
-> **Important:** Use `rediss://` (TLS) for your `REDIS_URL` in production. The app automatically enables TLS when the URL uses the `rediss://` scheme.
+Use rediss:// for production Redis. Manual classification requires no paid always-running service once the Queue path has passed preview and been released; platform quotas still apply.

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { getClassifyQueue } from '@/lib/queue'
+import { publishClassification } from '@/lib/classification/publish'
 import { rateLimit } from '@/lib/rate-limit'
 import { successResponse, errorResponse, unauthorized, validationError, serverError } from '@/lib/api-response'
 import { SourceType, FeedbackStatus, Theme, Sentiment, Prisma } from '@prisma/client'
@@ -176,18 +176,18 @@ export async function POST(req: NextRequest) {
         submitterEmail: submitter_email,
         submitterName: submitter_name,
         status: 'PENDING',
+        classificationDispatchKind: 'INTERACTIVE',
         metadata: (metadata || {}) as Record<string, string>,
       },
     })
 
-    const queue = getClassifyQueue()
-    const job = await queue.add(
-      `classify-${item.id}`,
-      { feedbackItemId: item.id, organizationId: user.organizationId },
-      { priority: 1, jobId: `classify-${item.id}` }
-    )
-
-    return successResponse({ id: item.id, status: 'queued', jobId: job.id }, undefined, 202)
+    try {
+      const jobId = await publishClassification({ feedbackItemId: item.id, organizationId: user.organizationId })
+      return successResponse({ id: item.id, status: 'queued', jobId }, undefined, 202)
+    } catch {
+      console.warn('[POST /api/feedback] Classification publish failed; item remains pending')
+      return successResponse({ id: item.id, status: 'pending' }, undefined, 202)
+    }
   } catch (err) {
     console.error('[POST /api/feedback]', err)
     return serverError()

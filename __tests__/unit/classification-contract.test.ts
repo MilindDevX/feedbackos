@@ -29,6 +29,24 @@ describe('classification contract', () => {
     jest.clearAllMocks()
   })
 
+  it('returns a review fallback when product areas cannot fit the provider budget', async () => {
+    const result = await classifyFeedback('feedback-1', 'The dashboard cannot find my saved feedback.', ['x'.repeat(8000)])
+    expect(result.output.requires_human_review).toBe(true)
+    expect(result.promptTokens).toBe(0)
+    expect(createCompletion).not.toHaveBeenCalled()
+  })
+
+  it('requires review when the bounded request omits part of the original feedback', async () => {
+    createCompletion.mockResolvedValue({
+      model: 'test-model', choices: [{ message: { content: JSON.stringify({
+        theme: 'bug_problem', sentiment: 'negative', product_area: 'Dashboard', confidence: 0.9,
+        summary: 'Search does not find feedback', requires_human_review: false,
+      }) } }], usage: { prompt_tokens: 100, completion_tokens: 20 },
+    })
+    const result = await classifyFeedback('feedback-1', 'Search cannot find feedback. '.repeat(1000), ['Dashboard'])
+    expect(result.output.requires_human_review).toBe(true)
+  })
+
   it.each([
     ['bug_problem', 'BUG_PROBLEM'],
     ['feature_request', 'FEATURE_REQUEST'],

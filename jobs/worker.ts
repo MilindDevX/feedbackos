@@ -1,6 +1,6 @@
 import { Worker, Job } from 'bullmq'
 import { createBullMQConnection } from '../lib/redis'
-import { QUEUE_NAMES, ClassifyJobPayload, ZendeskSyncPayload, CsvImportPayload } from '../lib/queue'
+import { QUEUE_NAMES, ClassifyJobPayload, ZendeskSyncPayload } from '../lib/queue'
 import { db } from '../lib/db'
 import { classifyFeedback, persistClassification, markClassificationError } from '../lib/ai/classify'
 import { fetchZendeskTickets, decryptZendeskConfig, mapZendeskTicketToFeedback } from '../lib/integrations/zendesk'
@@ -132,55 +132,8 @@ const zendeskWorker = new Worker<ZendeskSyncPayload>(
   { connection: createBullMQConnection(), concurrency: 2 }
 )
 
-// ─── CSV Import Worker ─────────────────────────────────────────────────────────
-const csvWorker = new Worker<CsvImportPayload>(
-  QUEUE_NAMES.CSV_IMPORT,
-  async (job: Job<CsvImportPayload>) => {
-    const { organizationId, rows } = job.data
-    console.log(`[CsvImport] Processing ${rows.length} rows for org ${organizationId}`)
-
-    const classifyQueue = getClassifyQueue()
-    const jobsToEnqueue: ClassifyJobPayload[] = []
-    let imported = 0
-
-    for (const row of rows) {
-      try {
-        const item = await db.feedbackItem.create({
-          data: {
-            organizationId,
-            source: 'CSV',
-            rawText: row.rawText,
-            submittedAt: row.submittedAt ? new Date(row.submittedAt) : new Date(),
-            externalId: row.externalId || null,
-            submitterEmail: row.submitterEmail || null,
-            status: 'PENDING',
-          },
-        })
-        jobsToEnqueue.push({ feedbackItemId: item.id, organizationId })
-        imported++
-      } catch {
-        // Skip duplicates silently
-      }
-    }
-
-    if (jobsToEnqueue.length > 0) {
-      await classifyQueue.addBulk(
-        jobsToEnqueue.map((data) => ({
-          name: `classify-${data.feedbackItemId}`,
-          data,
-          opts: { priority: 3, jobId: `classify-${data.feedbackItemId}` },
-        }))
-      )
-    }
-
-    console.log(`[CsvImport] ✓ ${imported}/${rows.length} rows imported`)
-    return { imported, total: rows.length }
-  },
-  { connection: createBullMQConnection(), concurrency: 3 }
-)
-
 // ─── Event Listeners ──────────────────────────────────────────────────────────
-for (const worker of [classifyWorker, zendeskWorker, csvWorker]) {
+for (const worker of [classifyWorker, zendeskWorker]) {
   worker.on('failed', (job, err) => {
     console.error(`[Worker:${job?.queueName}] Job ${job?.id} failed:`, err.message)
   })
@@ -198,7 +151,6 @@ async function shutdown() {
   await Promise.all([
     classifyWorker.close(),
     zendeskWorker.close(),
-    csvWorker.close(),
   ])
   process.exit(0)
 }

@@ -15,6 +15,8 @@ const config: Config = {
   },
   setupFiles: ['<rootDir>/__tests__/setup.ts'],
   testTimeout: 15000,
+  // Database integration suites share the single provider-budget row; parallel workers would clobber it.
+  ...(process.env.TEST_DATABASE_URL ? { maxWorkers: 1 } : {}),
 }
 
 export default config

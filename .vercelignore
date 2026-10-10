@@ -1,0 +1,19 @@
+# Upload only application sources; Git exclusions are not deployment exclusions.
+brain/
+.superpowers/
+.git/
+.env
+.env.*
+!.env.example
+.neon
+.neon.*
+node_modules/
+.next/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+*.log
+*.dump
+*.pem
+dump.rdb

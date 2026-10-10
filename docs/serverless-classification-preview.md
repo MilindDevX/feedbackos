@@ -1,0 +1,95 @@
+# Serverless classification preview gate
+
+Status: isolated Preview deployed and core manual-feedback/recovery workflow verified 2026-10-02. Controlled 429 recovery passed; crash/redelivery did not pass. Other release gates remain open; production is not authorized.
+
+## Scope
+
+Deploy this classifier change to an isolated Vercel preview after deployment approval. Use a disposable Neon database/account and privately configured preview environment values. Production data, Git publication and a paid worker are outside this preview scope. Read actual account quotas before consuming AI requests.
+
+Required preview settings: DATABASE_URL, REDIS_URL, GROQ_API_KEY, auth/email settings, encryption key and a separate CRON_SECRET. Vercel supplies Queue identity. Build with npm run build; apply migrations explicitly to the disposable preview database first. Do not use deploy:build with inherited production settings.
+
+## Preflight — 2026-10-02
+
+- Original Vercel project is on Hobby. Its existing Preview variables also target Production, including database, Redis and AI credentials. Do not inherit them for this test. A separate Hobby test project, `feedbackos-classifier-preview-20261002` (`prj_9VDKVrIHNaUIYZmU9xqwB5K0gZnQ`), was created with no Git repository connected. Original project settings were not changed.
+- Neon free-plan schema-only branch `feedbackos-classifier-preview-20261002` created, with separate `classifier_preview` role/database. All six migrations applied only to that empty database, including the daily token counter. Branch expires 2026-10-05 00:00 IST. Production database was not migrated or copied into it.
+- CLI dry run initially included `.env`, `brain/` and `.superpowers/`; Git exclusions did not protect the upload. `.vercelignore` now excludes them. Repeated dry run reports zero forbidden files. Repeat immediately before actual upload.
+- Groq signed in: organization limits for `openai/gpt-oss-120b` are 30 RPM, 1,000 RPD, 8,000 TPM and 200,000 tokens/day. Default Project inherits these limits. Existing local-test key differs from production key; no new key created. Keys still share organization capacity. Keep the first hosted smoke test below ten calls, inspect remaining quota, and verify actual usage/reset behavior before release.
+- Account-owned Upstash Redis `feedbackos-classifier-preview` created on Free Tier in US East, TLS enabled; dashboard shows $0.00 and no payment method. Its connection is saved as a Secret for the isolated Vercel project's Preview environment only. Production Redis is not changed.
+- Vercel Chrome 2FA completed. The isolated project's first deployment (`dpl_CnQ1vHdJ5hZVw1PyE4DeEQMzpSHn`) failed during build and was labelled Production despite a Preview target request; it had no test credentials. [Vercel documents](https://vercel.com/docs/projects/deploy-from-cli) that a new project's first deployment is always Production, even without `--prod`. The original project and production database were untouched.
+- Milind explicitly authorized transferring the local Groq test key and disposable Neon credential to the isolated Vercel project's Preview Secret settings. Eleven settings, including Redis, are Preview-only Secrets; no values are recorded here. Two subsequent deployments were confirmed `target=preview`, `readyState=READY`. Latest: `dpl_5vf1temQVRxaW7KMLu7Xk2yNkDd6` at `https://feedbackos-classifier-preview-20261002-o7g5zlj1i.vercel.app` (Vercel sign-in protected). No Git publication or live-site deployment occurred.
+
+## Hosted evidence — 2026-10-02
+
+- Latest Preview `/api/health`: HTTP 200, disposable Neon and test Redis both `ok`.
+- One authenticated synthetic manual submission: HTTP 202/queued; one Queue delivery; item reached `CLASSIFIED`, with one model request. Human reclassification republished and reached `CLASSIFIED` again; human override then yielded `REVIEWED` with the selected theme/sentiment and an audit action. Temporary synthetic sessions were removed.
+- A second synthetic item was inserted as `PENDING` without a Queue wakeup. Missing cron authorization returned HTTP 401. Authorized cron returned HTTP 200 (`published:1`, `failed:0`); the item reached `CLASSIFIED` without a hosted worker.
+- Two rapid manual submissions returned HTTP 202 and both reached `CLASSIFIED` on first attempt. Groq's Default Project logs show their request starts 63 seconds apart (20:30:21 and 20:31:24 IST). All five October 2 model requests used the test key, returned HTTP 200, and totalled 4,495 actual tokens (3,911 input, including 512 cached, and 584 output). That matches the Preview database's five-request count; its 18,920-token counter is conservative *reserved* capacity, not usage. Disposable database ends with three `CLASSIFIED`, one `REVIEWED`, no temporary sessions or classification errors. Vercel error-log query found zero error entries on both Ready deployments. These are functional smoke results, not production accuracy evidence.
+- One later synthetic *direct* Groq request (outside Preview) returned HTTP 200 and used 74 input + 32 output tokens. Groq request logs now show six calls / 4,601 actual tokens for October 2; the Preview database correctly still accounts for only its five calls. The direct response reported `x-ratelimit-remaining-requests: 999` with `x-ratelimit-reset-requests: 1m26.4s`, despite six same-day calls visible in the log. The organization Usage activity view showed only one request for the test key when checked, while the project request log showed six; the Usage view warns of up to 15 minutes' delay, which does not explain the older five calls. Groq documents these headers as daily-request remaining/reset, but the observed values do not reconcile with the log; do not use them to assert organization-wide remaining daily capacity or a reset time. No further provider calls are needed for this discrepancy until the semantics are resolved.
+- Ordinary HTTP POST to the Queue route did not execute a callback. The response was HTML with `x-matched-path: /_not-found`, not the Queue handler's JSON; Vercel runtime logs grouped it under `/_not-found`. An unrelated missing-path POST returned the same HTTP 200 + `/_not-found` combination, while GETs to either missing path returned HTTP 404. Thus the 200 is a general missing-POST status anomaly in this deployment, not evidence that an ordinary caller reached the consumer. The deployed Queue function exists with a 120-second max duration, and real Queue messages did reach it. Treat external route isolation as verified in this Preview; do not use HTTP status alone as its protection check.
+- A temporary, item-ID-gated fault simulator ran only in the isolated Preview (`dpl_EA3pnFENTykRHjziKbZbGeWNN5ue`). Its synthetic HTTP 429 carried `Retry-After: 3`; the item was eventually `CLASSIFIED` on attempt two with one actual model result. This verifies hosted deferral and recovery for that controlled case, not real Groq quota exhaustion or the three-attempt terminal path.
+- A separate synthetic item exited the consumer after its first database reservation. The function log recorded process exit 1, but Vercel reported response status 200. The item remained `CLASSIFYING` on attempt one after its two-minute lease expired, and no second invocation appeared in that deployment's logs by 2026-10-03 00:00 IST. Preview Queue observability showed 8 published, 8 deleted, 10 received and 2 aggregate redeliveries; these totals do not identify the interrupted message. **Crash/redelivery recovery is not verified.** The database-backed daily cron can find an expired lease, but that particular item's subsequent recovery was not demonstrated. Do not infer a platform root cause from the 200 status alone.
+- The simulator and its local test were removed; clean isolated Preview deployment `dpl_9Lpszc5nT3mj6NcFHscKdyrdendj` was confirmed `target=preview`, `READY`, and `/api/health` returned HTTP 200 with database/Redis `ok` on 2026-10-03. Both temporary Preview Secret selectors were removed from project settings. The older fault-simulator deployment remains an immutable historical Preview URL; do not use it for further testing. An overnight database recheck was unavailable because the Neon CLI session expired.
+- Vercel's [April 2026 changelog](https://vercel.com/changelog/queues-now-supports-7-day-ttl) documents seven-day Queue retention; older Queue/API docs still say 24 hours. The 604,800-second send succeeded, but actual expiry on this account was not measured. The remaining lifetime and 3,600-second visibility bound must still be verified.
+- Still open: crash/redelivery or explicit cron recovery after interruption; actual Queue retention/visibility; organization-wide remaining quota/reset behavior across projects; sustained concurrency and database-pressure measurement. Local tests cover several failure paths but are not substitutes for these hosted gates. Do not proceed to production on this evidence alone.
+
+## Crash-recovery watchdog — local, 2026-10-09
+
+After each successful claim, `processClassification` now publishes a delayed wakeup (`CLASSIFICATION_LEASE_SECONDS + 30` = 150 s, idempotency generation `watchdog:<leaseToken>`) before calling the model. If the invocation dies, the wakeup finds the expired lease and `reserveClassification` reclaims the item (attempt + 1, terminal `CLASSIFICATION_ERROR` after three). Finished work makes the wakeup a no-op. Publish failure is logged and does not block classification; the daily cron remains the last backstop. This removes the dependence on Queue redelivery that the hosted crash test did not observe.
+
+Local evidence: new unit test (watchdog queued before the model call; publish failure tolerated; no watchdog without a claim) failed before the change. Disposable-Postgres consumer test simulates a consumer that never returns, expires the lease and minute window, delivers the wakeup and verifies `CLASSIFIED` on attempt two; a second test verifies the no-op. Full suite against disposable PostgreSQL: 111/111; without a database 86 pass, 25 skip. TypeScript and changed-file ESLint pass. **Hosted crash recovery is still unverified** until the isolated Preview re-runs the forced-exit test.
+
+## Hosted crash recovery — 2026-10-09 (PASSED)
+
+Isolated project `feedbackos-classifier-preview-20261002`, deployment `hsbs5mmnu` (Preview). Fresh free Neon database `feedbackos-classifier-test` created through Vercel Storage and connected to Preview only (prefix `DATABASE`; the expired branch's `DATABASE_URL` was removed first); migrations ran in the build (`DATABASE_URL_UNPOOLED`). No secret was copied by hand. A temporary, deployment-protected, Preview-gated test endpoint and fault switch existed only in an uncommitted scratch copy; the fault flag was removed after the run.
+
+- Control item: classified on attempt 1 within ~10 s. Its watchdog arrived 150 s later (20:41:32 IST) and was a no-op.
+- Fault item: claimed at 20:40:03 IST, then `process.exit(1)` (log: exit status 1); left `CLASSIFYING` with lease until 15:12:03 UTC. Its watchdog arrived exactly 150 s later (20:42:33 IST), reclaimed it and it was `CLASSIFIED` on attempt 2. No other consumer invocation occurred between crash and watchdog, so Queue redelivery again did not occur; recovery came from the watchdog.
+- Provider usage: 2 Groq calls.
+
+Crash/redelivery gate: **passed via watchdog**. Still open: Queue retention/visibility measurement, organization-wide Groq quota/reset reconciliation, sustained concurrency/DB pressure.
+
+## Throughput and load — 2026-10-09/10
+
+**Finding.** A 20-item burst on `op6ws05pq` classified ~1 item/minute (15 done in 14 min). Two causes, both fixed locally and verified hosted:
+1. Token reservation used UTF-8 bytes as the upper bound: a 50-character item reserved 3,777 tokens (actual ~900), so the 7,000 tokens/minute guard admitted one request per minute. Fix: `refundUnusedReservation` returns `reserved − actual` to the same minute/day windows once the provider reports usage (no refund when usage is missing). The in-flight bound stays safe.
+2. Paced Queue retries arrive in lockstep about once per minute, so one item won each burst. Fix: `drainDueClassifications` — after classifying its own message, the invocation holding the provider slot keeps taking the oldest due item at the 12 s pace until 75 s (budget leaves room for one wait plus a 30 s model call inside maxDuration 120 s); stops on long deferrals, repeated skips and unexpected errors.
+
+**Hosted result** (`gr1kkcyao`): 10 new items plus 3 leftovers finished in ~3.2 min (~4/min against a 5/min design ceiling). Minute tokens stayed ≤ 3,800 of 7,000. No 429, refund, watchdog or consumer errors. Waiting items still wake in ~1-minute lockstep bursts (~10 invocations per burst); acceptable for interactive volume, but **bulk CSV must stagger deferrals by queue position** before large imports (2,000 rows would otherwise mean ~2,000 reservation transactions per minute on Neon Free). Local: 120/120 with disposable PostgreSQL. Jest now runs serially when `TEST_DATABASE_URL` is set because database suites share the budget row (parallel runs were flaky).
+
+## Queue retention probes — started 2026-10-09 20:14 UTC
+
+Deployment `e37342phs` published two delayed messages whose items are fenced (`classificationNextAttemptAt` = due − 60 s) from drain/recovery; Preview has no cron. Check item status after the due time:
+- 25 h probe: item `cmv1elshh000210gcj8kyyhxa`, due ≈ 2026-10-10 21:14 UTC. Classified ⇒ retention > 24 h.
+- 6 d 23 h probe: item `cmv1elvqc000510gcbuwfai25`, due ≈ 2026-10-16 19:14 UTC. Classified ⇒ 7-day retention holds.
+Still `PENDING` well after due ⇒ message expired; database recovery (cron/drain) remains responsible.
+
+## Private Blob CSV import — hosted check 2026-10-10
+
+Free private Vercel Blob store `feedbackos-csv-test` (iad1) created through Vercel Storage and connected to the isolated test project only, with `BLOB_READ_WRITE_TOKEN` injected (needed by `handleUpload`). Deployment `k6iov43gk` applied the `csv_import` migration at build. A temporary scratch-only endpoint uploaded generated CSVs into the private store server-side and invoked the real `completeAuthorizedCsvUpload` path:
+- 6 valid + 2 invalid rows: `PROCESSING`, totalRows 8, importedRows 6, invalidRows 2, private object deleted, completion 763 ms; all 6 rows `CLASSIFIED` within ~70 s.
+- 2,001 rows (181 KB): `FAILED` with "The CSV has 2,001 rows; the limit is 2,000.", zero rows inserted, object deleted, 213 ms.
+
+Not yet verified hosted: browser token exchange and a >4.5 MB browser upload (needs a signed-in preview session), duplicate completion callback (covered locally), cron repair (needs `CRON_SECRET` use), and a full 2,000-row import (would spend the shared Groq daily quota). Local: 148 tests green; rendered ingest page verified (start, oversize rejection, failed upload → cancel → retry allowed, axe clean at 1440/375; mobile layout limited by the pre-existing fixed sidebar).
+
+## Acceptance
+
+1. Submit manual feedback. Verify HTTP 202, one database item, eventual classification/review status, one AI call and no hosted worker.
+2. Reclassify it; hold an earlier result until after a review/new request. Verify an old lease cannot overwrite the newer state.
+3. Deliver concurrent/duplicate ID-only messages. Verify one claim per item, request spacing below account limits, and actual token usage within the reserved budget. Exceedance blocks production.
+4. Test a controlled AI error/429 with Retry-After. Verify shared cooldown, deferred work and three-attempt final error. Use a controlled preview harness rather than exhausting real provider quota.
+5. Interrupt a consumer and redeliver after lease expiry. Verify recovery, bounded attempts and no duplicate classification.
+6. Save an item while publication fails, then invoke authorized cron recovery. Verify progress; missing/wrong authorization must not query or publish work.
+7. Request the Queue consumer through ordinary HTTP. Verify Vercel sends it to `/_not-found` and the handler does not execute; this is verified in the isolated Preview. Do not infer protection from HTTP status alone: missing-path POSTs return 200 here.
+8. Inspect Queue retries, DB connection pressure, request/token quotas and logs. No credentials, feedback text or private environment values in reports.
+9. Verify actual SDK retention and expiry: the SDK and public API documentation disagree on seven-day versus 24-hour retention. Check that retry visibility stays below 3,600 seconds and remaining message lifetime. Expired wakeups must leave recoverable database work.
+10. Verify bulk yields to due interactive work and a CSV-origin human reclassification can use the reserved interactive daily capacity. Do not run the old BullMQ classifier concurrently for these items: its persistence does not honor the serverless lease. Integrations remain deferred; verify zero configured production sources again before release.
+
+## Local evidence — 2026-10-01
+
+The disposable PostgreSQL workflow covers submission → classification → reclassification → review, concurrent cold starts/claims, stale results and human-override races. Provider calls, authentication and Queue transport are replaced at external boundaries; this is not hosted end-to-end evidence. All 103 tests in 18 suites, TypeScript, changed-file ESLint, production build with dummy configuration, Prisma schema validation/migration comparison and diff whitespace checks pass. Repository-wide lint retains eight existing errors and 30 warnings in unrelated files. Hosted protection, retention, quota telemetry and actual latency remain hard gates.
+
+2026-10-02 before hosted testing: Daily token accounting and exhaustion regressions observed failing before their fixes. TypeScript, focused lint, dummy-config production build and diff checks passed. Migration backfill rehearsed against a temporary local table: unused budgets start at zero; budgets with historical requests start at 200,000 until reset. Isolated Neon preview had six completed migrations, zero feedback and zero budget rows. Later full Jest run: 83 passed, 23 skipped (14 passing suites, four skipped); TypeScript and Prisma validation passed. See hosted evidence above for the later disposable-database state.
+
+Focused read-only daily-token review found no critical/important issues. Optional exact-cap and concurrent near-cap tests remain additional coverage; existing row locking and transactions were inspected. Reviewer did not rerun database tests or verify hosted behavior. After the temporary simulator was removed on 2026-10-03, all 106 local tests in 18 suites passed against a disposable local database; TypeScript, focused lint and diff checks passed. The clean isolated Preview build and health check also passed.
+
+Record deployment identity, measured latency/request spacing, account quotas/token usage, results and remaining failures. Production stays gated until the remaining tests pass. Then begin the private Blob CSV plan with its separate 20 MiB preview gate.
