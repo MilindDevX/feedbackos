@@ -59,7 +59,7 @@ Crash/redelivery gate: **passed via watchdog**. Still open: Queue retention/visi
 ## Queue retention probes — started 2026-10-09 20:14 UTC
 
 Deployment `e37342phs` published two delayed messages whose items are fenced (`classificationNextAttemptAt` = due − 60 s) from drain/recovery; Preview has no cron. Check item status after the due time:
-- 25 h probe: item `cmv1elshh000210gcj8kyyhxa`, due ≈ 2026-10-10 21:14 UTC. Classified ⇒ retention > 24 h.
+- 25 h probe: item `cmv1elshh000210gcj8kyyhxa`, due ≈ 2026-10-10 21:14 UTC. Classified ⇒ retention > 24 h. **Result: passed** — delivered and CLASSIFIED at 2026-10-10 21:14:22 UTC (1 attempt), so delayed messages survive past 24 h.
 - 6 d 23 h probe: item `cmv1elvqc000510gcbuwfai25`, due ≈ 2026-10-16 19:14 UTC. Classified ⇒ 7-day retention holds.
 Still `PENDING` well after due ⇒ message expired; database recovery (cron/drain) remains responsible.
 

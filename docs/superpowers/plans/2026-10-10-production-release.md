@@ -30,3 +30,11 @@
 ## Known follow-ups
 
 Zendesk/Intercom still need the BullMQ worker (not deployed; production has no configured integrations). Dashboard shell has no mobile layout. Queue retention probes due 2026-10-10 21:14 UTC and 2026-10-16 19:14 UTC.
+
+## Release log — 2026-10-11
+
+- Neon backup branch `pre-release-backup-20261011` created from `main` before cutover.
+- Private Blob store `feedbackos-blob` (iad1) connected to Production and Preview; `BLOB_READ_WRITE_TOKEN` is a Secret.
+- `main` → `98be1b4`; production deployment `79c2rmnam` built, then applied 6 pending migrations (7 total, 0 unfinished).
+- After release: `/api/health` 200 (database ok, redis ok); 48 items = 30 CLASSIFIED + 18 NEEDS_REVIEW, none PENDING/CLASSIFYING; 0 active alert rules; 0 CSV imports.
+- Still open: `CRON_SECRET` (Milind), signed-in manual classification and small CSV import on production, 7-day retention probe (2026-10-16).
