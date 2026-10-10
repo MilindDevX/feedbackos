@@ -73,6 +73,12 @@ Signed-in browser check (2026-10-10, alias `feedbackos-csv-test-milind.vercel.ap
 
 Still not verified hosted: duplicate completion callback (covered locally), cron repair (needs `CRON_SECRET` use), and a full 2,000-row classification run (would spend the shared Groq daily quota). Local: 148 tests green; rendered ingest page verified (start, oversize rejection, failed upload → cancel → retry allowed, axe clean at 1440/375; mobile layout limited by the pre-existing fixed sidebar).
 
+## Groq reconciliation — 2026-10-10 (console, Milind signed in)
+
+Account limits for `openai/gpt-oss-120b`: 30 RPM, 1,000 RPD, 8,000 TPM, 200,000 TPD (unchanged). The request log shows 47 calls between 2026-10-09 15:09 UTC and 2026-10-10 10:38 UTC, all HTTP 200, no 429s, mapping one-to-one onto triggered classifications: 2 crash-test calls; 30 load-test calls (≈61 s apart before the throughput fix, 12–13 s apart after it, matching the 5/minute provider pace); 6 server-side CSV calls; 9 signed-in browser CSV calls. Per request ≈780–790 input + 95–190 output tokens (≈900) against ≈3,777 reserved, so the refund returns ≈75% of each reservation. Activity totals: ≈32 requests / ≈30K tokens on Oct 9 and ≈15 / ≈13K on Oct 10 (UTC).
+
+Residual risks, accepted: (1) the app resets daily counters at UTC midnight while Groq's daily limits may refill on a rolling basis, so near exhaustion a post-midnight request could receive 429 — handled by Retry-After deferral (verified in a controlled preview test); (2) each database keeps its own budget row, so production and any preview share one Groq organization quota without a shared counter — avoid preview load tests while production is busy.
+
 ## Acceptance
 
 1. Submit manual feedback. Verify HTTP 202, one database item, eventual classification/review status, one AI call and no hosted worker.
