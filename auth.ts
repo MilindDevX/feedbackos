@@ -3,6 +3,8 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import GoogleProvider from 'next-auth/providers/google'
 import EmailProvider from 'next-auth/providers/nodemailer'
 import { db } from '@/lib/db'
+import { magicLinkDelivery } from '@/lib/email-delivery'
+import { createTransport } from 'nodemailer'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
@@ -15,18 +17,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       server: {
         host: process.env.EMAIL_SERVER_HOST || 'smtp.resend.com',
         port: Number(process.env.EMAIL_SERVER_PORT) || 465,
-        secure: true,
+        // Port 465 is TLS from the start; 587 upgrades with STARTTLS, which `secure: true` would break.
+        secure: (Number(process.env.EMAIL_SERVER_PORT) || 465) === 465,
         auth: {
           user: process.env.EMAIL_SERVER_USER || 'resend',
           pass: process.env.EMAIL_SERVER_PASSWORD || process.env.RESEND_API_KEY || 'missing-key',
         },
       },
       from: process.env.EMAIL_FROM || 'noreply@feedbackos.app',
-      sendVerificationRequest({ identifier, url, provider }) {
-        const pass = process.env.EMAIL_SERVER_PASSWORD || process.env.RESEND_API_KEY
-        const isPlaceholderKey = !pass || pass === 're_placeholder' || pass === 'missing-key'
-        
-        if (isPlaceholderKey) {
+      async sendVerificationRequest({ identifier, url, provider }) {
+        const delivery = magicLinkDelivery(process.env)
+        if (delivery === 'misconfigured') {
+          // Never print sign-in links on a deployed app: anyone with log access could use them.
+          console.error('[auth] Email delivery is not configured (missing or placeholder EMAIL_SERVER_PASSWORD/RESEND_API_KEY)')
+          throw new Error('Email delivery is not configured')
+        }
+        if (delivery === 'log') {
           console.log(`\n======================================================\n`)
           console.log(`🔐 MAGIC LINK FOR ${identifier}:`)
           console.log(`${url}`)
@@ -34,11 +40,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return
         }
         
-        // Otherwise, use the default Nodemailer transport
-        // We import nodemailer dynamically here to avoid cluttering the global scope
-        const { createTransport } = require('nodemailer')
         const transport = createTransport(provider.server)
-        return transport.sendMail({
+        await transport.sendMail({
           to: identifier,
           from: provider.from,
           subject: `Sign in to FeedbackOS`,
