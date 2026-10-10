@@ -2,7 +2,7 @@
 
 import { signIn } from 'next-auth/react'
 import { useState } from 'react'
-import { Mail, Globe, Zap, BarChart3, Tag, ArrowRight, Loader2 } from 'lucide-react'
+import { Mail, Zap, BarChart3, Tag, ArrowRight, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -28,10 +28,13 @@ export default function LoginPage() {
         callbackUrl: '/dashboard',
       })
       if (result?.error) {
-        setError('Failed to send magic link. Please try again.')
+        setError('We couldn\'t send the sign-in email right now. Please try again in a moment.')
       } else {
         setEmailSent(true)
       }
+    } catch {
+      // A server or network failure used to leave the page silent; say so instead.
+      setError('We couldn\'t send the sign-in email right now. Please try again in a moment.')
     } finally {
       setLoading(null)
     }
