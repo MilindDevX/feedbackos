@@ -11,8 +11,12 @@ function createRedisClient() {
   const env = validateEnv()
   const url = env.REDIS_URL
   const isTls = url.startsWith('rediss://')
+  // This client only serves caches, rate limits and health checks, which all tolerate a Redis outage.
+  // BullMQ builds its own connection (createBullMQConnection), so unbounded retries are not needed here;
+  // with them, an unreachable Redis made every request wait forever instead of skipping the cache.
   const client = new Redis(url, {
-    maxRetriesPerRequest: null, // Required for BullMQ
+    maxRetriesPerRequest: 1,
+    connectTimeout: 3000,
     enableReadyCheck: false,
     lazyConnect: true,
     ...(isTls && { tls: {} }),

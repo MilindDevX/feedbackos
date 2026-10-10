@@ -6,6 +6,7 @@ import { successResponse, unauthorized, serverError } from '@/lib/api-response'
 import type { SessionUser } from '@/auth'
 
 const CACHE_TTL = 300 // 5 minutes
+const DEFAULT_WINDOW_DAYS = 30
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -14,10 +15,13 @@ export async function GET(req: NextRequest) {
   if (!user.organizationId) return successResponse(getEmptySummary())
 
   const url = new URL(req.url)
-  const dateFrom = url.searchParams.get('dateFrom') || getDefaultDateFrom()
-  const dateTo = url.searchParams.get('dateTo') || new Date().toISOString()
+  const requestedFrom = url.searchParams.get('dateFrom')
+  const requestedTo = url.searchParams.get('dateTo')
+  const dateFrom = requestedFrom || getDefaultDateFrom()
+  const dateTo = requestedTo || new Date().toISOString()
 
-  const cacheKey = `dashboard:summary:${user.organizationId}:${dateFrom}:${dateTo}`
+  // The default window moves every millisecond; key it by name so repeat loads share one cache entry.
+  const cacheKey = `dashboard:summary:${user.organizationId}:${requestedFrom ?? `last${DEFAULT_WINDOW_DAYS}d`}:${requestedTo ?? 'now'}`
 
   try {
     // Check cache
@@ -68,13 +72,15 @@ export async function GET(req: NextRequest) {
       .map(([name, count]) => ({ name, count }))
 
     const negativeSentiment = bySentiment['NEGATIVE'] || 0
-    const negativePercent = total > 0 ? Math.round((negativeSentiment / total) * 100) : 0
+    const classifiedCount = classifications.length
+    const negativePercent = classifiedCount > 0 ? Math.round((negativeSentiment / classifiedCount) * 100) : 0
 
     const statusMap: Record<string, number> = {}
     for (const s of byStatus) statusMap[s.status] = s._count.id
 
     const summary = {
       total,
+      windowDays: requestedFrom || requestedTo ? null : DEFAULT_WINDOW_DAYS,
       needsReview,
       negativePercent,
       byTheme,
@@ -97,13 +103,13 @@ export async function GET(req: NextRequest) {
 
 function getDefaultDateFrom(): string {
   const d = new Date()
-  d.setDate(d.getDate() - 30)
+  d.setDate(d.getDate() - DEFAULT_WINDOW_DAYS)
   return d.toISOString()
 }
 
 function getEmptySummary() {
   return {
-    total: 0, needsReview: 0, negativePercent: 0,
+    total: 0, windowDays: DEFAULT_WINDOW_DAYS, needsReview: 0, negativePercent: 0,
     byTheme: {}, bySentiment: {}, byProductArea: {},
     topProductAreas: [], byStatus: {}, topTheme: null,
   }
