@@ -3,7 +3,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import GoogleProvider from 'next-auth/providers/google'
 import EmailProvider from 'next-auth/providers/nodemailer'
 import { db } from '@/lib/db'
-import { magicLinkDelivery } from '@/lib/email-delivery'
+import { magicLinkDelivery, senderAddress, signInEmail } from '@/lib/email-delivery'
 import { createTransport } from 'nodemailer'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -24,7 +24,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           pass: process.env.EMAIL_SERVER_PASSWORD || process.env.RESEND_API_KEY || 'missing-key',
         },
       },
-      from: process.env.EMAIL_FROM || 'noreply@feedbackos.app',
+      from: senderAddress({ EMAIL_FROM: process.env.EMAIL_FROM, EMAIL_SERVER_USER: process.env.EMAIL_SERVER_USER, EMAIL_SERVER_HOST: process.env.EMAIL_SERVER_HOST }),
       async sendVerificationRequest({ identifier, url, provider }) {
         const delivery = magicLinkDelivery(process.env)
         if (delivery === 'misconfigured') {
@@ -41,13 +41,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
         
         const transport = createTransport(provider.server)
-        await transport.sendMail({
-          to: identifier,
-          from: provider.from,
-          subject: `Sign in to FeedbackOS`,
-          text: `Sign in by clicking here: ${url}`,
-          html: `<p>Sign in to FeedbackOS by clicking the link below:</p><p><a href="${url}">Sign in</a></p>`
-        })
+        const { subject, text, html } = signInEmail(url, new URL(url).host)
+        await transport.sendMail({ to: identifier, from: provider.from, subject, text, html })
       }
     }),
   ],
