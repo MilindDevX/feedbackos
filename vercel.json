@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm exec tsx scripts/vercel-build.ts",
   "functions": {
     "app/api/queues/classify/route.ts": {
       "maxDuration": 120,
