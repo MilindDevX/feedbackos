@@ -1,17 +1,18 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, AlertTriangle, MessageSquare, Filter, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { ChevronLeft, ChevronRight, Inbox, Search, X } from 'lucide-react'
 import ThemeBadge from './ThemeBadge'
-import SentimentBadge from './SentimentBadge'
 import StatusBadge from './StatusBadge'
 import FeedbackSlideOver from './FeedbackSlideOver'
-import { formatSource, timeAgo } from '@/lib/utils'
+import { buttonClass, inputClass } from '@/components/ui/primitives'
+import { cn, formatSentiment, formatSource, formatTheme, timeAgo } from '@/lib/utils'
 
 interface FeedbackItem {
   id: string
   source: string
-  rawText: string
+  rawText?: string
   submittedAt: string
   status: string
   classification?: {
@@ -24,237 +25,225 @@ interface FeedbackItem {
   }
 }
 
-interface FilterState {
-  theme: string
-  sentiment: string
-  source: string
-  status: string
+interface ListResult {
+  base: string
+  items: FeedbackItem[]
+  total: number
+  totalPages: number
 }
+
+const STATUS_TABS = [
+  { value: '', label: 'All' },
+  { value: 'NEEDS_REVIEW', label: 'Needs review' },
+  { value: 'CLASSIFIED', label: 'Classified' },
+  { value: 'REVIEWED', label: 'Reviewed' },
+  { value: 'PENDING', label: 'Pending' },
+]
+const THEMES = ['BUG_PROBLEM', 'FEATURE_REQUEST', 'USABILITY_ISSUE', 'QUESTION_SUPPORT', 'PRAISE', 'OTHER']
+const SENTIMENTS = ['POSITIVE', 'NEGATIVE', 'MIXED', 'NEUTRAL']
+const SOURCES = ['MANUAL', 'CSV', 'ZENDESK', 'INTERCOM', 'API']
 
 interface FeedbackTableProps {
   embedded?: boolean
   pageSize?: number
+  initialStatus?: string
 }
 
-export default function FeedbackTable({ embedded = false, pageSize = 20 }: FeedbackTableProps) {
-  const [items, setItems] = useState<FeedbackItem[]>([])
-  const [loading, setLoading] = useState(true)
+export default function FeedbackTable({ embedded = false, pageSize = 20, initialStatus = '' }: FeedbackTableProps) {
+  const [status, setStatus] = useState(initialStatus)
+  const [theme, setTheme] = useState('')
+  const [sentiment, setSentiment] = useState('')
+  const [source, setSource] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
-  const [selectedItem, setSelectedItem] = useState<FeedbackItem | null>(null)
-  const [filters, setFilters] = useState<FilterState>({ theme: '', sentiment: '', source: '', status: '' })
-  const [showFilters, setShowFilters] = useState(false)
+  const [refreshTick, setRefreshTick] = useState(0)
+  const [result, setResult] = useState<ListResult | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const fetchItems = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        pageSize: String(pageSize),
-        ...(filters.theme && { theme: filters.theme }),
-        ...(filters.sentiment && { sentiment: filters.sentiment }),
-        ...(filters.source && { source: filters.source }),
-        ...(filters.status && { status: filters.status }),
+  const base = useMemo(() => new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+    ...(status && { status }),
+    ...(theme && { theme }),
+    ...(sentiment && { sentiment }),
+    ...(source && { source }),
+    ...(search && { search }),
+  }).toString(), [page, pageSize, status, theme, sentiment, source, search])
+
+  useEffect(() => {
+    const timer = setTimeout(() => { setSearch(searchInput.trim()); setPage(1) }, 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/feedback?${base}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (cancelled) return
+        setResult({ base, items: json.data || [], total: json.meta?.total || 0, totalPages: json.meta?.totalPages || 1 })
       })
-      const res = await fetch(`/api/feedback?${params}`)
-      const json = await res.json()
-      setItems(json.data || [])
-      setTotal(json.meta?.total || 0)
-      setTotalPages(json.meta?.totalPages || 1)
-    } finally {
-      setLoading(false)
-    }
-  }, [page, pageSize, filters])
+      .catch(() => { if (!cancelled) setResult({ base, items: [], total: 0, totalPages: 1 }) })
+    return () => { cancelled = true }
+  }, [base, refreshTick])
 
-  useEffect(() => { fetchItems() }, [fetchItems])
+  // While anything on screen is still being classified, refresh quietly so results appear on their own.
+  const waiting = result?.items.some((item) => item.status === 'PENDING' || item.status === 'CLASSIFYING') ?? false
+  useEffect(() => {
+    if (!waiting) return
+    const timer = setInterval(() => setRefreshTick((tick) => tick + 1), 4000)
+    return () => clearInterval(timer)
+  }, [waiting])
 
+  const loading = !result || result.base !== base
+  const items = result?.items ?? []
+  const total = result?.total ?? 0
+  const totalPages = result?.totalPages ?? 1
+  const hasFilters = Boolean(status || theme || sentiment || source || search)
   const clearFilters = () => {
-    setFilters({ theme: '', sentiment: '', source: '', status: '' })
-    setPage(1)
+    setStatus(''); setTheme(''); setSentiment(''); setSource(''); setSearchInput(''); setSearch(''); setPage(1)
   }
-  const hasFilters = Object.values(filters).some(Boolean)
-
-  const skeletonRows = Array.from({ length: pageSize > 10 ? 10 : pageSize })
+  const first = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const last = Math.min(page * pageSize, total)
 
   return (
-    <div className="space-y-3">
-      {/* Filter bar — only shown on full feedback page */}
+    <div>
       {!embedded && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors ${
-              showFilters ? 'bg-brand-600/20 text-brand-400 border border-brand-600/30' : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            <Filter className="w-3.5 h-3.5" />
-            Filters
-            {hasFilters && <span className="w-1.5 h-1.5 rounded-full bg-brand-400 ml-0.5" />}
-          </button>
-
-          {hasFilters && (
-            <button onClick={clearFilters} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs text-gray-500 hover:text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors">
-              <X className="w-3 h-3" /> Clear
-            </button>
-          )}
-
-          {showFilters && (
-            <div className="w-full flex flex-wrap gap-2 mt-1">
+        <div className="space-y-3 mb-4">
+          <div className="flex gap-1 overflow-x-auto -mx-1 px-1 pb-1" role="group" aria-label="Filter by status">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => { setStatus(tab.value); setPage(1) }}
+                aria-pressed={status === tab.value}
+                className={cn(
+                  'h-8 px-3 rounded-md text-sm whitespace-nowrap transition-colors',
+                  status === tab.value ? 'bg-ink text-canvas font-medium' : 'text-ink-2 hover:bg-hover hover:text-ink'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <label className="relative flex-1 min-w-0">
+              <span className="sr-only">Search feedback</span>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3" aria-hidden="true" />
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search feedback text"
+                maxLength={200}
+                className={cn(inputClass, 'pl-9 h-9')}
+              />
+            </label>
+            <div className="grid grid-cols-3 gap-2 sm:flex">
               {[
-                { key: 'theme', label: 'Theme', options: ['BUG_PROBLEM', 'FEATURE_REQUEST', 'USABILITY_ISSUE', 'QUESTION_SUPPORT', 'PRAISE', 'OTHER'] },
-                { key: 'sentiment', label: 'Sentiment', options: ['POSITIVE', 'NEGATIVE', 'NEUTRAL', 'MIXED'] },
-                { key: 'source', label: 'Source', options: ['ZENDESK', 'INTERCOM', 'CSV', 'MANUAL', 'API'] },
-                { key: 'status', label: 'Status', options: ['PENDING', 'CLASSIFIED', 'NEEDS_REVIEW', 'REVIEWED', 'CLASSIFICATION_ERROR'] },
-              ].map(({ key, label, options }) => (
+                { label: 'Theme', value: theme, set: setTheme, options: THEMES, format: formatTheme },
+                { label: 'Sentiment', value: sentiment, set: setSentiment, options: SENTIMENTS, format: formatSentiment },
+                { label: 'Source', value: source, set: setSource, options: SOURCES, format: formatSource },
+              ].map(({ label, value, set, options, format }) => (
                 <select
-                  key={key}
-                  value={filters[key as keyof FilterState]}
-                  onChange={(e) => { setFilters(f => ({ ...f, [key]: e.target.value })); setPage(1) }}
-                  className="px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  key={label}
+                  aria-label={`Filter by ${label.toLowerCase()}`}
+                  value={value}
+                  onChange={(e) => { set(e.target.value); setPage(1) }}
+                  className={cn(inputClass, 'h-9 py-0 sm:w-auto', value && 'border-accent text-accent')}
                 >
-                  <option value="">All {label}s</option>
-                  {options.map(o => <option key={o} value={o}>{o.replace(/_/g, ' ')}</option>)}
+                  <option value="">{label}</option>
+                  {options.map((option) => <option key={option} value={option}>{format(option)}</option>)}
                 </select>
               ))}
             </div>
-          )}
-
-          <div className="ml-auto text-xs text-gray-500">
-            {total > 0 && `${total} item${total !== 1 ? 's' : ''}`}
+            {hasFilters && (
+              <button onClick={clearFilters} className={buttonClass('ghost', 'md', 'self-start sm:self-auto')}>
+                <X className="w-3.5 h-3.5" aria-hidden="true" /> Clear
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {/* Table */}
-      <div className={embedded ? '' : 'glass-card overflow-hidden'}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-800 text-left">
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Summary</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Theme</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Sentiment</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Product Area</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Source</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">Date</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800/50">
-              {loading ? (
-                skeletonRows.map((_, i) => (
-                  <tr key={i}>
-                    {[120, 80, 70, 90, 60, 60, 80].map((w, j) => (
-                      <td key={j} className="px-4 py-4 hidden-last">
-                        <div className="skeleton h-4 rounded" style={{ width: `${w}px` }} />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : items.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center">
-                        <MessageSquare className="w-6 h-6 text-gray-600" />
-                      </div>
-                      <div>
-                        <p className="text-gray-400 font-medium">No feedback found</p>
-                        <p className="text-gray-600 text-xs mt-1">
-                          {hasFilters ? 'Try adjusting your filters' : 'Upload your first batch of feedback to get started'}
-                        </p>
-                      </div>
-                      {!hasFilters && (
-                        <a href="/ingest" className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm transition-colors mt-1">
-                          Add Feedback →
-                        </a>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                items.map((item) => (
-                  <tr
-                    key={item.id}
-                    onClick={() => setSelectedItem(item)}
-                    className="hover:bg-gray-800/30 cursor-pointer transition-colors group"
-                  >
-                    <td className="px-4 py-3.5 max-w-xs">
-                      <p className="text-gray-200 text-sm line-clamp-2 group-hover:text-white transition-colors">
-                        {item.classification?.summary || item.rawText?.slice(0, 100) || 'Processing...'}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      {item.classification?.theme ? (
-                        <div className="flex flex-wrap items-center gap-1">
-                          <ThemeBadge theme={item.classification.theme} />
-                          {item.classification.secondaryThemes?.map((theme) => (
-                            <span key={theme} title="Also mentioned"><ThemeBadge theme={theme} /></span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-600 text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5 hidden md:table-cell">
-                      {item.classification?.sentiment ? (
-                        <SentimentBadge sentiment={item.classification.sentiment} />
-                      ) : (
-                        <span className="text-gray-600 text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5 hidden lg:table-cell">
-                      <span className="text-gray-400 text-xs">{item.classification?.productArea || '—'}</span>
-                    </td>
-                    <td className="px-4 py-3.5 hidden lg:table-cell">
-                      <span className="text-gray-500 text-xs">{formatSource(item.source)}</span>
-                    </td>
-                    <td className="px-4 py-3.5 hidden xl:table-cell">
-                      <span className="text-gray-500 text-xs">{timeAgo(item.submittedAt)}</span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <StatusBadge status={item.status} />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {!embedded && totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-800 flex items-center justify-between">
-            <p className="text-xs text-gray-500">
-              Page {page} of {totalPages}
+      <div className={cn(!embedded && 'rounded-xl border border-line bg-surface overflow-hidden')}>
+        {loading ? (
+          <ul aria-busy="true" aria-label="Loading feedback">
+            {Array.from({ length: Math.min(pageSize, 6) }).map((_, i) => (
+              <li key={i} className="px-4 sm:px-5 py-4 border-b border-line last:border-b-0 space-y-2">
+                <div className="skeleton h-4 w-3/4" />
+                <div className="skeleton h-3 w-1/3" />
+              </li>
+            ))}
+          </ul>
+        ) : items.length === 0 ? (
+          <div className="px-6 py-16 text-center">
+            <Inbox className="w-8 h-8 mx-auto text-ink-3" aria-hidden="true" />
+            <p className="mt-3 font-medium text-ink">{hasFilters ? 'Nothing matches these filters' : 'No feedback yet'}</p>
+            <p className="mt-1 text-sm text-ink-3">
+              {hasFilters ? 'Try a different status or clear the filters.' : 'Add a single item or import a CSV — classification starts on its own.'}
             </p>
+            <div className="mt-5">
+              {hasFilters
+                ? <button onClick={clearFilters} className={buttonClass('secondary')}>Clear filters</button>
+                : <Link href="/ingest" className={buttonClass('primary')}>Add feedback</Link>}
+            </div>
+          </div>
+        ) : (
+          <ul>
+            {items.map((item, index) => {
+              const c = item.classification
+              return (
+                <li key={item.id} className="border-b border-line last:border-b-0 rise-in" style={{ animationDelay: `${Math.min(index, 8) * 25}ms` }}>
+                  <button
+                    data-testid="feedback-row"
+                    onClick={() => setSelectedId(item.id)}
+                    className="w-full text-left px-4 sm:px-5 py-3.5 flex gap-3 hover:bg-hover focus-visible:bg-hover transition-colors"
+                  >
+                    <span className={cn('dot mt-1.5', `dot-${(c?.sentiment || 'neutral').toLowerCase()}`)} title={c ? formatSentiment(c.sentiment) : 'Not classified yet'} />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm text-ink line-clamp-2">
+                        {c?.summary || item.rawText?.slice(0, 140) || 'Waiting for classification…'}
+                      </span>
+                      <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-3">
+                        {c && <ThemeBadge theme={c.theme} />}
+                        {c?.secondaryThemes?.map((secondary) => <ThemeBadge key={secondary} theme={secondary} secondary />)}
+                        {c?.productArea && <span>{c.productArea}</span>}
+                        <span aria-hidden="true">·</span>
+                        <span>{formatSource(item.source)}</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="tabular">{timeAgo(item.submittedAt)}</span>
+                        <span className="sm:hidden"><StatusBadge status={item.status} /></span>
+                      </span>
+                    </span>
+                    <span className="hidden sm:block flex-shrink-0 pt-0.5"><StatusBadge status={item.status} /></span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+
+        {!embedded && !loading && total > 0 && (
+          <div className="px-4 sm:px-5 py-3 border-t border-line flex items-center justify-between text-xs text-ink-3">
+            <p className="tabular">{first}–{last} of {total.toLocaleString()}</p>
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="p-1.5 rounded-lg hover:bg-gray-800 disabled:opacity-30 text-gray-400 transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} aria-label="Previous page" className={buttonClass('ghost', 'sm', 'px-2')}>
+                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
               </button>
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="p-1.5 rounded-lg hover:bg-gray-800 disabled:opacity-30 text-gray-400 transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} aria-label="Next page" className={buttonClass('ghost', 'sm', 'px-2')}>
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Slide-over panel */}
-      {selectedItem && (
+      {selectedId && (
         <FeedbackSlideOver
-          item={selectedItem}
-          onClose={() => setSelectedItem(null)}
-          onReviewed={fetchItems}
+          item={{ id: selectedId }}
+          onClose={() => setSelectedId(null)}
+          onReviewed={() => setRefreshTick((tick) => tick + 1)}
         />
       )}
     </div>

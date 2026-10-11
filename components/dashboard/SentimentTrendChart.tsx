@@ -17,16 +17,18 @@ interface SentimentTrendChartProps {
   trends: TrendData | null
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface TooltipEntry { dataKey: string; color: string; value: number }
+
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: TooltipEntry[]; label?: string }) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="glass-card px-3 py-2 text-xs space-y-1">
-      <p className="text-gray-400 font-medium mb-1">{label}</p>
-      {payload.map((p: any) => (
+    <div className="rounded-md border border-line bg-surface shadow-raised px-3 py-2 text-xs space-y-1">
+      <p className="text-ink-3 font-medium mb-1">{label}</p>
+      {payload.map((p) => (
         <div key={p.dataKey} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
-          <span className="text-gray-300">{formatTheme(p.dataKey)}:</span>
-          <span className="text-white font-bold">{p.value}</span>
+          <span className="text-ink-2">{formatTheme(p.dataKey)}:</span>
+          <span className="text-ink font-semibold tabular">{p.value}</span>
         </div>
       ))}
     </div>
@@ -36,54 +38,22 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function SentimentTrendChart({ trends }: SentimentTrendChartProps) {
   const hasData = trends && trends.chartData.length > 0 && trends.topThemes.length > 0
 
-  return (
-    <div className="glass-card p-5">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-white">Weekly Trend — Top Themes</h3>
-        <p className="text-xs text-gray-500 mt-0.5">Last 12 weeks, top 3 themes</p>
-      </div>
+  if (!hasData) {
+    return <div className="h-60 flex items-center justify-center text-sm text-ink-2">Trends appear after a few weeks of feedback.</div>
+  }
 
-      {!hasData ? (
-        <div className="h-64 flex items-center justify-center">
-          <p className="text-gray-500 text-sm">No trend data available yet</p>
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height={256}>
-          <LineChart data={trends.chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="oklch(25% 0 0)" vertical={false} />
-            <XAxis
-              dataKey="week"
-              tick={{ fill: '#6b7280', fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-              interval={1}
-            />
-            <YAxis
-              tick={{ fill: '#6b7280', fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend
-              formatter={(value) => (
-                <span style={{ color: '#9ca3af', fontSize: '11px' }}>{formatTheme(value)}</span>
-              )}
-            />
-            {trends.topThemes.map((theme) => (
-              <Line
-                key={theme}
-                type="monotone"
-                dataKey={theme}
-                stroke={THEME_COLORS[theme] || '#6b7280'}
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 0 }}
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
-      )}
-    </div>
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <LineChart data={trends.chartData} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+        <CartesianGrid stroke="#8a8a9a" strokeOpacity={0.18} vertical={false} />
+        <XAxis dataKey="week" tick={{ fill: '#8a8a9a', fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} />
+        <YAxis tick={{ fill: '#8a8a9a', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+        <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#8a8a9a', strokeOpacity: 0.3 }} />
+        <Legend iconType="circle" iconSize={7} formatter={(value) => <span style={{ color: '#8a8a9a', fontSize: 12 }}>{formatTheme(value)}</span>} />
+        {trends.topThemes.map((theme) => (
+          <Line key={theme} type="monotone" dataKey={theme} stroke={THEME_COLORS[theme] || '#8a8a9a'} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
   )
 }

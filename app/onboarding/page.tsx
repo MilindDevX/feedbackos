@@ -2,7 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, ArrowRight, Loader2, Zap, CheckCircle2 } from 'lucide-react'
+import { ArrowRight, Loader2 } from 'lucide-react'
+import { Brand } from '@/components/ui/Brand'
+import { Notice, buttonClass, inputClass } from '@/components/ui/primitives'
+import { cn } from '@/lib/utils'
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -42,108 +45,61 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 p-6">
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-950/50 via-transparent to-purple-950/30 pointer-events-none" />
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-brand-600/5 rounded-full blur-3xl" />
+    <div className="min-h-dvh bg-canvas flex flex-col">
+      <header className="px-5 sm:px-8 h-16 flex items-center"><Brand /></header>
+      <main className="flex-1 flex items-center justify-center px-5 pb-16">
+        <div className="w-full max-w-md">
+          <p className="text-sm text-accent font-medium">Step 1 of 1</p>
+          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink">Name your workspace</h1>
+          <p className="mt-2 text-ink-2">Your team&rsquo;s feedback, themes and reviews live here. You can add people later.</p>
 
-      <div className="relative w-full max-w-lg">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-white">FeedbackOS</span>
-          </div>
-          <h1 className="text-3xl font-bold text-white">Create your workspace</h1>
-          <p className="mt-2 text-gray-400">Set up your organization to start triaging feedback</p>
-        </div>
-
-        {/* Form card */}
-        <div className="glass-card p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-300">
-                Organization name
-              </label>
-              <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  placeholder="Acme Corp"
-                  required
-                  minLength={2}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
-                />
-              </div>
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <div className="space-y-1.5">
+              <label htmlFor="org-name" className="block text-sm text-ink-2">Organization name</label>
+              <input
+                id="org-name"
+                type="text"
+                value={name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                placeholder="Acme Corp"
+                required
+                minLength={2}
+                autoFocus
+                className={cn(inputClass, 'h-11 text-base sm:text-sm')}
+              />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-300">
-                Workspace URL
-              </label>
-              <div className="flex items-center gap-0 rounded-xl border border-gray-800 bg-gray-900 overflow-hidden focus-within:ring-2 focus-within:ring-brand-500">
-                <span className="px-3 py-3 text-gray-500 text-sm bg-gray-900 border-r border-gray-800 flex-shrink-0">
-                  feedbackos.app/
-                </span>
+            <div className="space-y-1.5">
+              <label htmlFor="org-slug" className="block text-sm text-ink-2">Workspace URL</label>
+              <div className="flex items-center rounded-md border border-line bg-surface focus-within:border-accent focus-within:ring-2 focus-within:ring-accent-soft overflow-hidden">
+                <span className="pl-3 text-sm text-ink-3 flex-shrink-0">feedbackos.app/</span>
                 <input
+                  id="org-slug"
                   type="text"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                   placeholder="acme-corp"
                   required
                   minLength={2}
-                  className="flex-1 px-3 py-3 bg-transparent text-white placeholder-gray-500 focus:outline-none"
+                  aria-describedby="org-slug-hint"
+                  className="flex-1 min-w-0 h-11 px-1 bg-transparent text-base sm:text-sm text-ink placeholder:text-ink-3 focus:outline-none"
                 />
               </div>
-              <p className="text-xs text-gray-500">Lowercase letters, numbers, and hyphens only</p>
+              <p id="org-slug-hint" className="text-xs text-ink-3">Lowercase letters, numbers and hyphens.</p>
             </div>
 
-            {error && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                {error}
-              </div>
-            )}
+            {error && <Notice tone="error">{error}</Notice>}
 
-            <button
-              type="submit"
-              disabled={loading || !name || !slug}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-            >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <>
-                  Create workspace
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
+            <button type="submit" disabled={loading || !name || !slug} className={buttonClass('primary', 'md', 'w-full h-11')}>
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <>Create workspace <ArrowRight className="w-4 h-4" aria-hidden="true" /></>}
             </button>
           </form>
 
-          {/* What you get */}
-          <div className="mt-8 pt-6 border-t border-gray-800">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
-              Included in your workspace
-            </p>
-            <div className="space-y-2">
-              {[
-                '50 feedback items seeded for demo',
-                'AI classification pipeline ready',
-                'Default product area taxonomy',
-                'CSV upload & Zendesk connector',
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-2 text-sm text-gray-400">
-                  <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
+          <p className="mt-8 text-sm text-ink-3">
+            Next: import a CSV or paste a few messages. Each one is classified by theme, sentiment and product area within seconds.
+          </p>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

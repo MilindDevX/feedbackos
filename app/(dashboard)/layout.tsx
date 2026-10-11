@@ -11,14 +11,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user.organizationId) redirect('/onboarding')
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-950">
+    <div className="flex h-dvh overflow-hidden bg-canvas">
       <Sidebar user={user} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopNav user={user} />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
+        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
+          <div className="max-w-6xl mx-auto">{children}</div>
         </main>
       </div>
     </div>

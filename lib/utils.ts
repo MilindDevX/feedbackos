@@ -47,17 +47,7 @@ export function timeAgo(date: string | Date): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-export function confidenceColor(score: number): string {
-  if (score >= 0.8) return 'text-green-400'
-  if (score >= 0.6) return 'text-amber-400'
-  return 'text-red-400'
-}
-
 export const THEME_COLORS: Record<string, string> = {
-  BUG_PROBLEM: '#ef4444', FEATURE_REQUEST: '#3b82f6', USABILITY_ISSUE: '#f97316',
-  QUESTION_SUPPORT: '#8b5cf6', PRAISE: '#22c55e', OTHER: '#6b7280',
-}
-
-export const SENTIMENT_COLORS: Record<string, string> = {
-  POSITIVE: '#22c55e', NEGATIVE: '#ef4444', NEUTRAL: '#6b7280', MIXED: '#f59e0b',
+  BUG_PROBLEM: '#d4553d', FEATURE_REQUEST: '#4f7fd8', USABILITY_ISSUE: '#c98a1e',
+  QUESTION_SUPPORT: '#9361c9', PRAISE: '#3a9a63', OTHER: '#8a8a9a',
 }

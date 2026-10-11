@@ -3,7 +3,10 @@
 import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from 'react'
 import { useDropzone, type FileRejection } from 'react-dropzone'
 import { upload } from '@vercel/blob/client'
-import { Upload, FileText, X, Loader2, CheckCircle2, AlertCircle, Send, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
+import { Upload, FileText, X, Loader2, CheckCircle2, ArrowRight } from 'lucide-react'
+import { Notice, PageHeader, Panel, buttonClass, inputClass } from '@/components/ui/primitives'
+import { cn } from '@/lib/utils'
 import { detectCsvColumns } from '@/lib/integrations/csv'
 
 const MAX_CSV_BYTES = 20 * 1024 * 1024
@@ -184,209 +187,169 @@ export default function IngestPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Ingest Feedback</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Upload a CSV or submit feedback manually — AI classification starts automatically</p>
-      </div>
+    <>
+      <PageHeader title="Ingest" description="Import a CSV or add one item. Classification starts on its own." />
 
-      {/* CSV Upload */}
-      <section className="glass-card p-6 space-y-5">
-        <div>
-          <h2 className="text-base font-semibold text-white">Bulk CSV Upload</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Up to 2,000 rows and 20 MiB per CSV. On the free AI tier, classification runs gradually — about 14 hours for 2,000 rows.</p>
-        </div>
+      <div className="grid gap-6 lg:grid-cols-5 items-start">
+        <Panel className="p-5 sm:p-6 lg:col-span-3">
+          <h2 className="font-display text-base font-semibold text-ink">Import a CSV</h2>
+          <p className="mt-1 text-sm text-ink-3">Up to 2,000 rows and 20 MiB. On the free AI tier, large files classify gradually (about 14 hours for 2,000 rows).</p>
 
-        {step === 'idle' && (
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${
-              isDragActive
-                ? 'border-brand-500 bg-brand-500/5'
-                : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/30'
-            }`}
-          >
-            <input {...getInputProps({ 'aria-label': 'Choose a CSV file to import' })} />
-            <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragActive ? 'text-brand-400' : 'text-gray-600'}`} />
-            <p className="text-gray-300 font-medium">
-              {isDragActive ? 'Drop your CSV here' : 'Drag & drop your CSV file'}
-            </p>
-            <p className="text-gray-500 text-sm mt-1">or click to browse</p>
-            <p className="text-gray-600 text-xs mt-3">Accepted: .csv up to 20 MiB | You choose the feedback text column next</p>
-          </div>
-        )}
-
-        {step === 'mapping' && file && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/60 border border-gray-700">
-              <FileText className="w-5 h-5 text-brand-400 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-white font-medium truncate">{file.name}</p>
-                <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB · {detectedColumns.length} columns detected</p>
+          <div className="mt-5">
+            {step === 'idle' && (
+              <div
+                {...getRootProps()}
+                className={cn(
+                  'rounded-lg border-2 border-dashed px-6 py-12 text-center cursor-pointer transition-colors',
+                  isDragActive ? 'border-accent bg-accent-soft' : 'border-line-strong hover:border-accent hover:bg-hover'
+                )}
+              >
+                <input {...getInputProps({ 'aria-label': 'Choose a CSV file to import' })} />
+                <Upload className={cn('w-7 h-7 mx-auto', isDragActive ? 'text-accent' : 'text-ink-3')} aria-hidden="true" />
+                <p className="mt-3 font-medium text-ink">{isDragActive ? 'Drop it here' : 'Drop a CSV here, or click to choose'}</p>
+                <p className="mt-1 text-xs text-ink-3">You pick the feedback column next. Nothing is imported until you confirm.</p>
               </div>
-              <button onClick={resetUpload} aria-label="Remove file and start over" className="text-gray-500 hover:text-gray-300">
-                <X className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </div>
+            )}
 
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-gray-300">Map your columns</p>
-              {[
-                { key: 'rawText', label: 'Feedback text *', required: true },
-                { key: 'submittedAt', label: 'Date submitted' },
-                { key: 'submitterEmail', label: 'Submitter email' },
-              ].map(({ key, label, required }) => (
-                <div key={key} className="flex items-center gap-3">
-                  <label htmlFor={`csv-column-${key}`} className="w-36 text-xs text-gray-400 flex-shrink-0">{label}</label>
-                  <select
-                    id={`csv-column-${key}`}
-                    value={mapping[key as keyof ColumnMapping]}
-                    onChange={(e) => setMapping(m => ({ ...m, [key]: e.target.value }))}
-                    className="flex-1 px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500"
-                  >
-                    <option value="">{required ? '— select column —' : 'Skip'}</option>
-                    {detectedColumns.map(col => <option key={col} value={col}>{col}</option>)}
-                  </select>
+            {step === 'mapping' && file && (
+              <div className="space-y-5">
+                <div className="flex items-center gap-3 rounded-lg bg-sunken px-3 py-2.5">
+                  <FileText className="w-5 h-5 text-accent flex-shrink-0" aria-hidden="true" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-ink truncate">{file.name}</p>
+                    <p className="text-xs text-ink-3">{(file.size / 1024).toFixed(1)} KB · {detectedColumns.length} columns detected</p>
+                  </div>
+                  <button onClick={resetUpload} aria-label="Remove file and start over" className="w-8 h-8 rounded-md flex items-center justify-center text-ink-3 hover:text-ink hover:bg-hover">
+                    <X className="w-4 h-4" aria-hidden="true" />
+                  </button>
                 </div>
-              ))}
-            </div>
 
-            <button
-              onClick={handleUpload}
-              disabled={!mapping.rawText}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Upload & Classify
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+                <fieldset className="space-y-3">
+                  <legend className="text-sm font-medium text-ink mb-1">Match your columns</legend>
+                  {[
+                    { key: 'rawText', label: 'Feedback text', required: true },
+                    { key: 'submittedAt', label: 'Date submitted' },
+                    { key: 'submitterEmail', label: 'Submitter email' },
+                  ].map(({ key, label, required }) => (
+                    <div key={key} className="grid gap-1.5 sm:grid-cols-[9rem_1fr] sm:items-center sm:gap-3">
+                      <label htmlFor={`csv-column-${key}`} className="text-sm text-ink-2">
+                        {label}{required && <span className="text-danger" aria-hidden="true"> *</span>}
+                      </label>
+                      <select
+                        id={`csv-column-${key}`}
+                        name={key}
+                        value={mapping[key as keyof ColumnMapping]}
+                        onChange={(e) => setMapping(m => ({ ...m, [key]: e.target.value }))}
+                        required={required}
+                        className={inputClass}
+                      >
+                        <option value="">{required ? 'Select a column' : 'Skip'}</option>
+                        {detectedColumns.map(col => <option key={col} value={col}>{col}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </fieldset>
 
-        {step === 'uploading' && (
-          <div className="flex flex-col items-center gap-3 py-8">
-            <Loader2 className="w-8 h-8 text-brand-400 animate-spin" />
-            <p className="text-gray-300 text-sm">Uploading privately… {uploadProgress}%</p>
-            <div className="w-full max-w-xs h-1.5 rounded-full bg-gray-800 overflow-hidden" role="progressbar" aria-valuenow={uploadProgress} aria-valuemin={0} aria-valuemax={100} aria-label="Upload progress">
-              <div className="h-full bg-brand-500 transition-all" style={{ width: `${uploadProgress}%` }} />
-            </div>
-          </div>
-        )}
-
-        {step === 'processing' && (
-          <div className="space-y-4">
-            {!importStatus || importStatus.state === 'UPLOADING' || importStatus.state === 'IMPORTING' ? (
-              <div className="flex items-center gap-2 p-4 rounded-lg bg-gray-800/60 border border-gray-700 text-sm text-gray-300">
-                <Loader2 className="w-4 h-4 animate-spin text-brand-400" />
-                Upload received — importing rows…
+                <button onClick={handleUpload} disabled={!mapping.rawText} className={buttonClass('primary', 'md', 'w-full h-10')}>
+                  Upload &amp; Classify <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                </button>
               </div>
-            ) : (
-              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-400" />
-                  <p className="text-green-400 font-medium text-sm">
-                    {importStatus.importedRows.toLocaleString()} of {(importStatus.totalRows ?? 0).toLocaleString()} rows imported
-                  </p>
+            )}
+
+            {step === 'uploading' && (
+              <div className="py-8 text-center">
+                <Loader2 className="w-6 h-6 text-accent animate-spin mx-auto" aria-hidden="true" />
+                <p className="mt-3 text-sm text-ink-2 tabular">Uploading privately… {uploadProgress}%</p>
+                <div className="mt-3 mx-auto max-w-xs h-1.5 rounded-full bg-sunken overflow-hidden" role="progressbar" aria-valuenow={uploadProgress} aria-valuemin={0} aria-valuemax={100} aria-label="Upload progress">
+                  <div className="h-full bg-accent transition-[width]" style={{ width: `${uploadProgress}%` }} />
                 </div>
-                {importStatus.invalidRows > 0 && (
-                  <p className="text-amber-400 text-xs mt-1">{importStatus.invalidRows.toLocaleString()} rows skipped (empty text, bad date or email)</p>
+              </div>
+            )}
+
+            {step === 'processing' && (
+              <div className="space-y-4">
+                {!importStatus || importStatus.state === 'UPLOADING' || importStatus.state === 'IMPORTING' ? (
+                  <Notice tone="info"><Loader2 className="w-4 h-4 animate-spin mt-0.5" aria-hidden="true" />Upload received. Importing rows…</Notice>
+                ) : (
+                  <Notice tone="success">
+                    <CheckCircle2 className="w-4 h-4 mt-0.5" aria-hidden="true" />
+                    <span>
+                      {importStatus.importedRows.toLocaleString()} of {(importStatus.totalRows ?? 0).toLocaleString()} rows imported
+                      {importStatus.invalidRows > 0 && <span className="block text-xs opacity-80">{importStatus.invalidRows.toLocaleString()} rows skipped (empty text, bad date or email)</span>}
+                    </span>
+                  </Notice>
+                )}
+
+                {importStatus && importStatus.state === 'PROCESSING' && (
+                  <div>
+                    <p className="text-xs text-ink-3 mb-2">Classification progress for this import. Updates every 5 seconds; you can close this tab.</p>
+                    <dl className="grid grid-cols-2 sm:grid-cols-4 rounded-lg border border-line divide-x divide-y sm:divide-y-0 divide-line">
+                      {[
+                        { label: 'Waiting', value: importStatus.queued },
+                        { label: 'Classified', value: importStatus.classified },
+                        { label: 'Needs review', value: importStatus.needsReview },
+                        { label: 'Failed', value: importStatus.failed },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="px-3 py-3">
+                          <dt className="text-xs text-ink-3">{label}</dt>
+                          <dd className="font-display text-xl font-semibold text-ink tabular">{value.toLocaleString()}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
                 )}
               </div>
             )}
 
-            {importStatus && importStatus.state === 'PROCESSING' && (
-              <div className="space-y-2">
-                <p className="text-xs text-gray-500">Classification progress for this import (updates every 5s; safe to close this tab)</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Waiting', value: importStatus.queued, color: 'text-gray-400' },
-                    { label: 'Classified', value: importStatus.classified, color: 'text-green-400' },
-                    { label: 'Needs review', value: importStatus.needsReview, color: 'text-amber-400' },
-                    { label: 'Failed', value: importStatus.failed, color: 'text-red-400' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="p-3 rounded-lg bg-gray-800 text-center">
-                      <p className={`text-xl font-bold ${color}`}>{value.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">{label}</p>
-                    </div>
-                  ))}
+            {step === 'done' && (
+              <div className="py-6 text-center">
+                <CheckCircle2 className="w-8 h-8 text-success mx-auto" aria-hidden="true" />
+                <p className="mt-3 font-display text-lg font-semibold text-ink">Import finished</p>
+                <p className="mt-1 text-sm text-ink-2">Every row is classified; low-confidence ones are waiting in review.</p>
+                <div className="mt-5 flex gap-2 justify-center">
+                  <Link href="/feedback" className={buttonClass('primary')}>View feedback</Link>
+                  <button onClick={resetUpload} className={buttonClass('secondary')}>Upload another</button>
                 </div>
               </div>
             )}
-          </div>
-        )}
 
-        {step === 'done' && (
-          <div className="text-center space-y-3 py-4">
-            <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto" />
-            <p className="text-white font-semibold">Import finished</p>
-            <p className="text-gray-400 text-sm">Every imported row has been classified; low-confidence ones are waiting in review.</p>
-            <div className="flex gap-3 justify-center">
-              <a href="/feedback" className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm transition-colors">
-                View Feedback →
-              </a>
-              <button onClick={resetUpload} className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
-                Upload Another
+            {step === 'error' && (
+              <div className="space-y-3">
+                <Notice tone="error">{uploadError}</Notice>
+                <button onClick={resetUpload} className={buttonClass('secondary', 'sm')}>Try again</button>
+              </div>
+            )}
+          </div>
+        </Panel>
+
+        <Panel id="manual" className="p-5 sm:p-6 lg:col-span-2 scroll-mt-6">
+          <h2 className="font-display text-base font-semibold text-ink">Add one item</h2>
+          <p className="mt-1 text-sm text-ink-3">Paste a message, review or ticket. It is classified in a few seconds.</p>
+
+          <form onSubmit={handleManualSubmit} className="mt-5 space-y-3">
+            <label htmlFor="manual-feedback" className="sr-only">Feedback text</label>
+            <textarea
+              id="manual-feedback"
+              value={manualText}
+              onChange={(e) => setManualText(e.target.value)}
+              placeholder="Paste or type customer feedback here…"
+              rows={7}
+              required
+              minLength={10}
+              className={cn(inputClass, 'resize-y leading-relaxed')}
+            />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-ink-3 tabular">{manualText.length.toLocaleString()} / 50,000</span>
+              <button type="submit" disabled={manualLoading || manualText.length < 10} className={buttonClass('primary')}>
+                {manualLoading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+                Submit &amp; Classify
               </button>
             </div>
-          </div>
-        )}
-
-        {step === 'error' && (
-          <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <p className="text-red-400 text-sm">{uploadError}</p>
-            </div>
-            <button onClick={resetUpload} className="mt-2 text-xs text-gray-500 hover:text-gray-300">
-              Try again
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* Manual Entry */}
-      <section id="manual" className="glass-card p-6 space-y-4">
-        <div>
-          <h2 className="text-base font-semibold text-white">Manual Entry</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Submit a single feedback item for immediate classification</p>
-        </div>
-
-        <form onSubmit={handleManualSubmit} className="space-y-3">
-          <textarea
-            value={manualText}
-            onChange={(e) => setManualText(e.target.value)}
-            placeholder="Paste or type customer feedback here…"
-            rows={5}
-            required
-            minLength={10}
-            className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-800 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none transition-all text-sm leading-relaxed"
-          />
-
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-600">{manualText.length}/50,000 characters</span>
-            <button
-              type="submit"
-              disabled={manualLoading || manualText.length < 10}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-            >
-              {manualLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Submit & Classify
-            </button>
-          </div>
-
-          {manualSuccess && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-              <CheckCircle2 className="w-4 h-4 text-green-400" />
-              <p className="text-green-400 text-sm">Submitted! AI classification will complete in ~2 seconds.</p>
-            </div>
-          )}
-          {manualError && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <p className="text-red-400 text-sm">{manualError}</p>
-            </div>
-          )}
-        </form>
-      </section>
-    </div>
+            {manualSuccess && <Notice tone="success"><CheckCircle2 className="w-4 h-4 mt-0.5" aria-hidden="true" />Added. It will show up classified in Feedback in a few seconds.</Notice>}
+            {manualError && <Notice tone="error">{manualError}</Notice>}
+          </form>
+        </Panel>
+      </div>
+    </>
   )
 }
