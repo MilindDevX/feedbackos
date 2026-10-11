@@ -28,6 +28,8 @@ Install with `pnpm install --frozen-lockfile`, copy .env.example to .env, and co
 
 For a new disposable/local database, run `npm run db:migrate` then `npm run db:seed`. Run the web app with `npm run dev:next`. Local Queue development requires a linked Vercel project and development identity through Vercel's documented development setup. An unlinked next dev session cannot publish Queue messages; the API saves feedback pending for recovery. `npm run dev` also starts the BullMQ worker for CSV/Zendesk/Intercom.
 
+**Automated local testing (no real sign-in).** Start `next dev` with `LOCAL_TEST_MODE=1` against a disposable database. Then `http://localhost:<port>/api/test/login?next=/feedback` signs in a seeded `local-test@feedbackos.test` owner of a "Local Test Workspace", and classification messages are delivered in-process (no Vercel Queue; needs `GROQ_API_KEY`). Both switch off unless the flag is set, `NODE_ENV=development`, no `VERCEL`/`VERCEL_ENV` is present and the request host is loopback, so no deployment can enable them. CSV uploads still stop at the Blob step locally (no reachable callback).
+
 ## Ingestion and review
 
 - Manual feedback: submit through Ingest. HTTP 202 means queued or durably pending, not classified.
