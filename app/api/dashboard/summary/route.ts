@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
         where: {
           feedbackItem: { organizationId: orgId, submittedAt: dateFilter },
         },
-        select: { theme: true, sentiment: true, productArea: true },
+        select: { theme: true, secondaryThemes: true, sentiment: true, productArea: true },
       }),
       db.feedbackItem.count({
         where: { organizationId: orgId, status: 'NEEDS_REVIEW' },
@@ -59,8 +59,9 @@ export async function GET(req: NextRequest) {
     const bySentiment: Record<string, number> = {}
     const byProductArea: Record<string, number> = {}
 
+    // Themes count every item that mentions them, so praise inside a complaint is not lost.
     for (const c of classifications) {
-      byTheme[c.theme] = (byTheme[c.theme] || 0) + 1
+      for (const theme of new Set([c.theme, ...c.secondaryThemes])) byTheme[theme] = (byTheme[theme] || 0) + 1
       bySentiment[c.sentiment] = (bySentiment[c.sentiment] || 0) + 1
       if (c.productArea) {
         byProductArea[c.productArea] = (byProductArea[c.productArea] || 0) + 1

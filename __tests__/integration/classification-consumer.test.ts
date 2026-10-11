@@ -28,7 +28,7 @@ databaseTests('serverless classification', () => {
     jest.mocked(publishClassification).mockClear()
     jest.mocked(classifyFeedback).mockResolvedValue({
       output: {
-        theme: 'bug_problem', sentiment: 'negative', product_area: 'Dashboard',
+        theme: 'bug_problem', secondary_themes: [], sentiment: 'negative', product_area: 'Dashboard',
         confidence: 0.9, summary: 'Dashboard freezes while loading feedback',
         requires_human_review: false,
       },
@@ -78,7 +78,7 @@ databaseTests('serverless classification', () => {
     } })
     jest.mocked(classifyFeedback).mockResolvedValueOnce({
       output: {
-        theme: 'bug_problem', sentiment: 'negative', product_area: 'Dashboard',
+        theme: 'bug_problem', secondary_themes: [], sentiment: 'negative', product_area: 'Dashboard',
         confidence: 0.9, summary: 'Search ignores filter', requires_human_review: false,
       },
       modelUsed: 'test-model', promptTokens: 0, completionTokens: 0, latencyMs: 10, rawResponse: {},

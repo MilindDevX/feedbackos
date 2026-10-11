@@ -39,7 +39,7 @@ function makeResult(overrides: Partial<ClassificationResult['output']> = {}): Cl
       summary: 'Export button crashes',
       requires_human_review: false,
       ...overrides,
-    },
+    } as ClassificationResult['output'],
     modelUsed: 'qwen/qwen3-coder:free',
     promptTokens: 100,
     completionTokens: 50,

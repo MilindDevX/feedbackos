@@ -16,6 +16,7 @@ interface FeedbackItem {
   status: string
   classification?: {
     theme: string
+    secondaryThemes?: string[]
     sentiment: string
     productArea?: string
     confidenceScore: number
@@ -186,7 +187,12 @@ export default function FeedbackTable({ embedded = false, pageSize = 20 }: Feedb
                     </td>
                     <td className="px-4 py-3.5">
                       {item.classification?.theme ? (
-                        <ThemeBadge theme={item.classification.theme} />
+                        <div className="flex flex-wrap items-center gap-1">
+                          <ThemeBadge theme={item.classification.theme} />
+                          {item.classification.secondaryThemes?.map((theme) => (
+                            <span key={theme} title="Also mentioned"><ThemeBadge theme={theme} /></span>
+                          ))}
+                        </div>
                       ) : (
                         <span className="text-gray-600 text-xs">—</span>
                       )}

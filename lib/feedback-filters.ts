@@ -8,7 +8,8 @@ export function classificationFilter(filters: {
   productArea?: string | null
 }): Prisma.FeedbackItemWhereInput['classification'] {
   const where: Prisma.ClassificationWhereInput = {
-    ...(filters.theme && { theme: filters.theme }),
+    // A theme filter also finds items where that theme is secondary, e.g. praise inside a complaint.
+    ...(filters.theme && { OR: [{ theme: filters.theme }, { secondaryThemes: { has: filters.theme } }] }),
     ...(filters.sentiment && { sentiment: filters.sentiment }),
     ...(filters.productArea && { productArea: filters.productArea }),
   }

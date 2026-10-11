@@ -35,7 +35,7 @@ databaseTests('review during classification', () => {
   it('submits, classifies, reclassifies CSV-origin work using interactive capacity, and reviews', async () => {
     await db.classificationBudget.deleteMany()
     jest.mocked(classifyFeedback).mockResolvedValue({
-      output: { theme: 'bug_problem', sentiment: 'negative', product_area: 'API', confidence: 0.9,
+      output: { theme: 'bug_problem', secondary_themes: [], sentiment: 'negative', product_area: 'API', confidence: 0.9,
         summary: 'Export fails', requires_human_review: false },
       modelUsed: 'test', promptTokens: 100, completionTokens: 20, latencyMs: 1, rawResponse: {},
     })
@@ -96,7 +96,7 @@ databaseTests('review during classification', () => {
       await Promise.race([intercepted, review])
       await persistClassificationIfCurrent(item.id, 'review-race', {
         output: {
-          theme: 'bug_problem', sentiment: 'negative', product_area: 'API', confidence: 0.9,
+          theme: 'bug_problem', secondary_themes: [], sentiment: 'negative', product_area: 'API', confidence: 0.9,
           summary: 'AI classification', requires_human_review: false,
         }, modelUsed: 'test', promptTokens: 100, completionTokens: 20, latencyMs: 1, rawResponse: {},
       })

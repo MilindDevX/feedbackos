@@ -248,10 +248,10 @@ describe('GET /api/dashboard/summary – caching', () => {
     ;(redis.get as jest.Mock).mockResolvedValue(null)
     ;(db.feedbackItem.count as jest.Mock).mockResolvedValueOnce(10).mockResolvedValueOnce(3)
     ;(db.classification.findMany as jest.Mock).mockResolvedValueOnce([
-      { theme: 'BUG', sentiment: 'NEGATIVE', productArea: 'API' },
-      { theme: 'BUG', sentiment: 'NEGATIVE', productArea: null },
-      { theme: 'PRAISE', sentiment: 'POSITIVE', productArea: null },
-      { theme: 'OTHER', sentiment: 'NEUTRAL', productArea: null },
+      { theme: 'BUG', secondaryThemes: ['PRAISE'], sentiment: 'NEGATIVE', productArea: 'API' },
+      { theme: 'BUG', secondaryThemes: [], sentiment: 'NEGATIVE', productArea: null },
+      { theme: 'PRAISE', secondaryThemes: [], sentiment: 'POSITIVE', productArea: null },
+      { theme: 'OTHER', secondaryThemes: [], sentiment: 'NEUTRAL', productArea: null },
     ])
 
     const res = await dashboardSummaryGet(makeRequest('GET', 'http://localhost/api/dashboard/summary'))
@@ -260,6 +260,8 @@ describe('GET /api/dashboard/summary – caching', () => {
     expect(json.data.total).toBe(10)
     expect(json.data.negativePercent).toBe(50)
     expect(json.data.windowDays).toBe(30)
+    // Praise inside a complaint counts toward praise as well as the complaint's own theme.
+    expect(json.data.byTheme).toEqual({ BUG: 2, PRAISE: 2, OTHER: 1 })
   })
 
   it('returns 401 for unauthenticated requests', async () => {

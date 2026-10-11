@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
         submittedAt: { gte: twelveWeeksAgo },
         status: { in: ['CLASSIFIED', 'REVIEWED', 'NEEDS_REVIEW'] },
       },
-      include: { classification: { select: { theme: true } } },
+      include: { classification: { select: { theme: true, secondaryThemes: true } } },
       orderBy: { submittedAt: 'asc' },
     })
 
@@ -53,8 +53,9 @@ export async function GET(req: NextRequest) {
       const weekStart = startOfWeek(item.submittedAt, { weekStartsOn: 1 })
       const key = format(weekStart, 'MMM d')
       if (!weekMap[key]) continue
-      const theme = item.classification.theme
-      weekMap[key][theme] = (weekMap[key][theme] || 0) + 1
+      for (const theme of new Set([item.classification.theme, ...item.classification.secondaryThemes])) {
+        weekMap[key][theme] = (weekMap[key][theme] || 0) + 1
+      }
     }
 
     // Find top 3 themes by total volume

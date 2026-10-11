@@ -221,6 +221,8 @@ model Classification {
   id                  String    @id @default(cuid())
   feedbackId          String    @unique
   theme               Theme
+  // Other themes the same feedback clearly contains, e.g. praise alongside a complaint.
+  secondaryThemes     Theme[]   @default([])
   sentiment           Sentiment
   productArea         String?
   confidenceScore     Float

@@ -1,6 +1,6 @@
 import { classifyFeedback, type ClassificationResult } from '@/lib/ai/classify'
 import { db } from '@/lib/db'
-import { sentimentToEnum, themeToEnum } from '@/lib/ai/schemas'
+import { secondaryThemeEnums, sentimentToEnum, themeToEnum } from '@/lib/ai/schemas'
 import type { Sentiment, Theme } from '@prisma/client'
 import { CLASSIFICATION_LEASE_SECONDS, delayProviderUntil, findRecoverableClassifications, refundUnusedReservation, reserveClassification } from './dispatch'
 import { publishClassification } from './publish'
@@ -142,6 +142,7 @@ export async function persistClassificationIfCurrent(
       create: {
         feedbackId: feedbackItemId,
         theme: themeToEnum[output.theme] as Theme,
+        secondaryThemes: secondaryThemeEnums(output) as Theme[],
         sentiment: sentimentToEnum[output.sentiment] as Sentiment,
         productArea: output.product_area,
         confidenceScore: output.confidence,
@@ -154,6 +155,7 @@ export async function persistClassificationIfCurrent(
       },
       update: {
         theme: themeToEnum[output.theme] as Theme,
+        secondaryThemes: secondaryThemeEnums(output) as Theme[],
         sentiment: sentimentToEnum[output.sentiment] as Sentiment,
         productArea: output.product_area,
         confidenceScore: output.confidence,

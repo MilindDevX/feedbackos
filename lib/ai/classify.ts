@@ -1,6 +1,6 @@
 import { openai } from './client'
 import type { ChatCompletionCreateParamsNonStreaming } from 'openai/resources/chat/completions'
-import { ClassificationOutput, ClassificationOutputSchema, themeToEnum, sentimentToEnum } from './schemas'
+import { ClassificationOutput, ClassificationOutputSchema, secondaryThemeEnums, themeToEnum, sentimentToEnum } from './schemas'
 import { prepareClassificationRequest, CLASSIFICATION_COMPLETION_TOKENS, type PreparedClassificationRequest } from './prompts'
 import { db } from '../db'
 import { FeedbackStatus, Theme, Sentiment } from '@prisma/client'
@@ -27,6 +27,7 @@ export async function classifyFeedback(
   if (wordCount < 5 || !request) {
     const fallback: ClassificationOutput = {
       theme: 'other',
+      secondary_themes: [],
       sentiment: 'neutral',
       product_area: productAreas[0] || 'Other',
       confidence: 0.3,
@@ -115,6 +116,7 @@ export async function persistClassification(
       create: {
         feedbackId: feedbackItemId,
         theme,
+        secondaryThemes: secondaryThemeEnums(output) as Theme[],
         sentiment,
         productArea: output.product_area,
         confidenceScore: output.confidence,
@@ -127,6 +129,7 @@ export async function persistClassification(
       },
       update: {
         theme,
+        secondaryThemes: secondaryThemeEnums(output) as Theme[],
         sentiment,
         productArea: output.product_area,
         confidenceScore: output.confidence,

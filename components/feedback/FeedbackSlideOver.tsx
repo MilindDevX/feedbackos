@@ -18,6 +18,7 @@ interface FeedbackDetail {
   submitterName?: string
   classification?: {
     theme: string
+    secondaryThemes?: string[]
     sentiment: string
     productArea?: string
     confidenceScore: number
@@ -156,6 +157,12 @@ export default function FeedbackSlideOver({ item, onClose, onReviewed }: Feedbac
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
                     <ThemeBadge theme={detail.classification.theme} size="md" />
+                    {detail.classification.secondaryThemes?.map((theme) => (
+                      <span key={theme} className="inline-flex items-center gap-1" title="Also mentioned in this feedback">
+                        <span className="text-xs text-gray-500">also</span>
+                        <ThemeBadge theme={theme} size="md" />
+                      </span>
+                    ))}
                     <SentimentBadge sentiment={detail.classification.sentiment} size="md" />
                     {detail.classification.productArea && (
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-800 text-gray-300">

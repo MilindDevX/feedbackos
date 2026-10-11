@@ -6,6 +6,7 @@
  * - The per-workspace daily feedback limit is configurable and counts from UTC midnight.
  */
 import { classificationFilter, csvCell, submittedAtFilter } from '@/lib/feedback-filters'
+import { ClassificationOutputSchema, secondaryThemeEnums } from '@/lib/ai/schemas'
 import {
   DEFAULT_WORKSPACE_DAILY_ITEMS, isMagicLinkSignIn, magicLinkBucket, startOfUtcDay, workspaceDailyItemLimit,
 } from '@/lib/abuse-limits'
@@ -25,7 +26,14 @@ describe('csvCell', () => {
 describe('classificationFilter', () => {
   it('keeps every selected condition', () => {
     expect(classificationFilter({ theme: 'BUG_PROBLEM', sentiment: 'NEGATIVE', productArea: 'Billing' }))
-      .toEqual({ is: { theme: 'BUG_PROBLEM', sentiment: 'NEGATIVE', productArea: 'Billing' } })
+      .toEqual({ is: {
+        OR: [{ theme: 'BUG_PROBLEM' }, { secondaryThemes: { has: 'BUG_PROBLEM' } }], sentiment: 'NEGATIVE', productArea: 'Billing',
+      } })
+  })
+
+  it('finds praise that sits inside a complaint', () => {
+    expect(classificationFilter({ theme: 'PRAISE' }))
+      .toEqual({ is: { OR: [{ theme: 'PRAISE' }, { secondaryThemes: { has: 'PRAISE' } }] } })
   })
 
   it('adds no condition when nothing is selected', () => {
@@ -63,5 +71,18 @@ describe('workspace daily limit', () => {
 
   it('counts from UTC midnight', () => {
     expect(startOfUtcDay(new Date('2026-10-11T23:59:59+05:30')).toISOString()).toBe('2026-10-11T00:00:00.000Z')
+  })
+})
+
+describe('secondary themes', () => {
+  it('keeps praise found next to a request, without repeating the primary theme', () => {
+    expect(secondaryThemeEnums({ theme: 'feature_request', secondary_themes: ['praise', 'feature_request', 'praise'] })).toEqual(['PRAISE'])
+  })
+
+  it('accepts stored responses that predate the field', () => {
+    const output = ClassificationOutputSchema.parse({
+      theme: 'bug_problem', sentiment: 'negative', product_area: 'API', confidence: 0.9, summary: 'x', requires_human_review: false,
+    })
+    expect(output.secondary_themes).toEqual([])
   })
 })

@@ -39,13 +39,14 @@ export async function GET(req: NextRequest) {
       take: 10000,
     })
 
-    const headers = ['id', 'source', 'submitted_at', 'status', 'theme', 'sentiment', 'product_area', 'confidence', 'summary', 'raw_text']
+    const headers = ['id', 'source', 'submitted_at', 'status', 'theme', 'secondary_themes', 'sentiment', 'product_area', 'confidence', 'summary', 'raw_text']
     const rows = items.map((item) => [
       item.id,
       item.source,
       item.submittedAt.toISOString(),
       item.status,
       item.classification?.theme || '',
+      item.classification?.secondaryThemes.join(';') || '',
       item.classification?.sentiment || '',
       item.classification?.productArea || '',
       item.classification?.confidenceScore?.toFixed(2) || '',

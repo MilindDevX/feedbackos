@@ -70,6 +70,7 @@ export async function GET(req: NextRequest) {
           classification: {
             select: {
               theme: true,
+              secondaryThemes: true,
               sentiment: true,
               productArea: true,
               confidenceScore: true,
@@ -108,6 +109,7 @@ export async function GET(req: NextRequest) {
         classification: {
           select: {
             theme: true,
+            secondaryThemes: true,
             sentiment: true,
             productArea: true,
             confidenceScore: true,

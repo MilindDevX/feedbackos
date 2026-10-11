@@ -68,7 +68,10 @@ async function main() {
 
   const { classifyFeedback } = await import('../lib/ai/classify')
   const results: EvaluationResult[] = []
-  for (const row of rows) {
+  // The free Groq tier allows 8K tokens per minute; pace calls so a run is not mostly 429s.
+  const delayMs = Number(optionValue('--delay-ms') ?? 0)
+  for (const [index, row] of rows.entries()) {
+    if (index > 0 && delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs))
     const expected = {
       category: row.category,
       urgency: row.urgency,

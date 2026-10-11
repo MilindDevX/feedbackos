@@ -7,6 +7,7 @@ import type { ClassificationResult } from '@/lib/ai/classify'
 const result: ClassificationResult = {
   output: {
     theme: 'bug_problem',
+    secondary_themes: [],
     sentiment: 'negative',
     product_area: 'Dashboard',
     confidence: 0.91,
