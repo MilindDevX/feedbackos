@@ -1,3 +1,4 @@
+jest.mock('@/lib/dashboard-cache', () => ({ invalidateDashboard: jest.fn(), dashboardCacheKey: jest.fn() }))
 import { processClassification, ClassificationDeferred, drainDueClassifications } from '@/lib/classification/process'
 import { classificationMessageRetry, processClassificationMessage } from '@/lib/classification/consumer'
 

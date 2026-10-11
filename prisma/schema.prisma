@@ -145,6 +145,7 @@ model FeedbackItem {
   @@index([status, classificationNextAttemptAt, classificationLeaseUntil], map: "feedback_items_classification_dispatch_idx")
   @@index([organizationId, submittedAt(sort: Desc)])
   @@index([organizationId, source])
+  @@index([organizationId, ingestedAt])
   @@map("feedback_items")
 }
 

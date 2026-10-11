@@ -2,6 +2,7 @@
  * UNIT TEST: a claimed classification schedules a delayed watchdog wakeup so a crashed consumer
  * is retried once its lease expires, without relying on Queue redelivery or the daily cron.
  */
+jest.mock('@/lib/dashboard-cache', () => ({ invalidateDashboard: jest.fn(), dashboardCacheKey: jest.fn() }))
 
 jest.mock('@/lib/classification/dispatch', () => ({
   ...jest.requireActual('@/lib/classification/dispatch'),

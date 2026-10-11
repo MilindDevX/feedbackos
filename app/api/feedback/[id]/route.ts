@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { publishClassification } from '@/lib/classification/publish'
-import { successResponse, unauthorized, notFound, serverError, validationError, forbidden } from '@/lib/api-response'
+import { invalidateDashboard } from '@/lib/dashboard-cache'
+import { hitRateLimit } from '@/lib/rate-limit'
+import { successResponse, errorResponse, unauthorized, notFound, serverError, validationError, forbidden } from '@/lib/api-response'
 import { Theme, Sentiment } from '@prisma/client'
 import type { SessionUser } from '@/auth'
 
@@ -69,6 +71,11 @@ export async function PATCH(
     return validationError('theme and sentiment are required for OVERRIDDEN action')
   }
 
+  // Each re-classification spends the shared AI quota, so repeated clicks or scripts are capped per workspace.
+  if (action === 'RECLASSIFIED' && await hitRateLimit(`reclassify:${user.organizationId}`, 60, 3600)) {
+    return errorResponse('Too many re-classifications this hour. Try again later.', 'RATE_LIMITED', 429)
+  }
+
   try {
     const item = await db.feedbackItem.findUnique({
       where: { id },
@@ -120,6 +127,7 @@ export async function PATCH(
         },
       })
     })
+    await invalidateDashboard(user.organizationId)
     if (action === 'RECLASSIFIED') {
       try {
         await publishClassification({ feedbackItemId: id, organizationId: user.organizationId }, 0, Date.now())

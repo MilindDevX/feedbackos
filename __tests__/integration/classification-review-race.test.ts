@@ -1,3 +1,4 @@
+jest.mock('@/lib/dashboard-cache', () => ({ invalidateDashboard: jest.fn(), dashboardCacheKey: jest.fn() }))
 import { randomUUID } from 'node:crypto'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
@@ -9,7 +10,7 @@ import { classifyFeedback } from '@/lib/ai/classify'
 
 jest.mock('@/auth', () => ({ auth: jest.fn() }))
 jest.mock('@/lib/classification/publish', () => ({ publishClassification: jest.fn() }))
-jest.mock('@/lib/rate-limit', () => ({ rateLimit: jest.fn().mockResolvedValue(null) }))
+jest.mock('@/lib/rate-limit', () => ({ rateLimit: jest.fn().mockResolvedValue(null), hitRateLimit: jest.fn().mockResolvedValue(false) }))
 jest.mock('@/lib/ai/classify', () => ({
   ...jest.requireActual('@/lib/ai/classify'), classifyFeedback: jest.fn(),
 }))

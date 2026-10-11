@@ -5,6 +5,7 @@ import EmailProvider from 'next-auth/providers/nodemailer'
 import { db } from '@/lib/db'
 import { magicLinkDelivery, senderAddress, signInEmail } from '@/lib/email-delivery'
 import { createTransport } from 'nodemailer'
+import { magicLinkEmailLimited } from '@/lib/abuse-limits'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
@@ -31,6 +32,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // Never print sign-in links on a deployed app: anyone with log access could use them.
           console.error('[auth] Email delivery is not configured (missing or placeholder EMAIL_SERVER_PASSWORD/RESEND_API_KEY)')
           throw new Error('Email delivery is not configured')
+        }
+        // Stops email-bombing an address and protects the sender account's daily sending limit.
+        if (await magicLinkEmailLimited(identifier)) {
+          throw new Error('Too many sign-in emails for this address')
         }
         if (delivery === 'log') {
           console.log(`\n======================================================\n`)

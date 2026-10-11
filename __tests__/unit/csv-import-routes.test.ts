@@ -1,3 +1,4 @@
+jest.mock('@/lib/dashboard-cache', () => ({ invalidateDashboard: jest.fn(), dashboardCacheKey: jest.fn() }))
 /**
  * UNIT TEST: authorization and validation for the direct-to-Blob CSV import endpoints.
  */

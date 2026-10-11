@@ -1,3 +1,4 @@
+jest.mock('@/lib/dashboard-cache', () => ({ invalidateDashboard: jest.fn(), dashboardCacheKey: jest.fn() }))
 import { NextRequest } from 'next/server'
 
 jest.mock('@/lib/classification/dispatch', () => ({

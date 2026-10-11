@@ -2,6 +2,7 @@
  * UNIT TEST: after classifying its own item, a consumer keeps draining due work at the provider pace
  * within its time budget, instead of leaving the backlog to lockstep Queue retries (~1 item/minute).
  */
+jest.mock('@/lib/dashboard-cache', () => ({ invalidateDashboard: jest.fn(), dashboardCacheKey: jest.fn() }))
 import { ClassificationDeferred, DRAIN_BUDGET_MS, drainDueClassifications } from '@/lib/classification/process'
 
 type Next = { feedbackItemId: string; organizationId: string }

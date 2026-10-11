@@ -1,3 +1,4 @@
+jest.mock('@/lib/dashboard-cache', () => ({ invalidateDashboard: jest.fn(), dashboardCacheKey: jest.fn() }))
 import { randomUUID } from 'node:crypto'
 import { db } from '@/lib/db'
 import { persistClassificationIfCurrent, recordClassificationFailure } from '@/lib/classification/process'

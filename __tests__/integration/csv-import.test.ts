@@ -1,3 +1,4 @@
+jest.mock('@/lib/dashboard-cache', () => ({ invalidateDashboard: jest.fn(), dashboardCacheKey: jest.fn() }))
 /**
  * INTEGRATION TEST: completing a private-Blob CSV import is validated before any write, idempotent
  * across duplicate callbacks and crashes, and hands rows to the serverless classifier as staggered IDs.
@@ -100,6 +101,24 @@ databaseTests('completeCsvImport', () => {
     expect(updated.lastError).toContain('2,000')
     expect(await db.feedbackItem.count({ where: { csvImportId: csvImport.id } })).toBe(0)
     expect(deps.deleteBlob).toHaveBeenCalledWith(csvImport.blobPathname)
+  })
+
+  it('fails an import that would exceed the workspace daily limit, inserting nothing', async () => {
+    process.env.WORKSPACE_DAILY_ITEM_LIMIT = '2'
+    try {
+      const csv = 'text\nOne\nTwo\nThree'
+      const csvImport = await startImport(csv)
+
+      await completeCsvImport(csvImport.id, blob(csvImport.blobPathname, csv), deps)
+
+      const updated = await db.csvImport.findUniqueOrThrow({ where: { id: csvImport.id } })
+      expect(updated.state).toBe('FAILED')
+      expect(updated.lastError).toContain('daily limit 2')
+      expect(await db.feedbackItem.count({ where: { csvImportId: csvImport.id } })).toBe(0)
+      expect(deps.deleteBlob).toHaveBeenCalledWith(csvImport.blobPathname)
+    } finally {
+      delete process.env.WORKSPACE_DAILY_ITEM_LIMIT
+    }
   })
 
   it('fails an oversized blob without reading it', async () => {

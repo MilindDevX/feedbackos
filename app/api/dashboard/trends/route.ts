@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { redis } from '@/lib/redis'
+import { dashboardCacheKey } from '@/lib/dashboard-cache'
 import { successResponse, unauthorized, serverError } from '@/lib/api-response'
 import { Theme } from '@prisma/client'
 import type { SessionUser } from '@/auth'
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   const user = session.user as SessionUser
   if (!user.organizationId) return successResponse({ weeks: [], themes: [] })
 
-  const cacheKey = `dashboard:trends:${user.organizationId}`
+  const cacheKey = await dashboardCacheKey(user.organizationId, 'trends')
 
   try {
     const cached = await redis.get(cacheKey).catch(() => null)

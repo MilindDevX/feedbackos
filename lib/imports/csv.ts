@@ -4,6 +4,8 @@ import type { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 import { CsvFormatError, CsvLimitError, validateCsv, type CsvColumnMapping } from '@/lib/integrations/csv'
 import { publishClassification } from '@/lib/classification/publish'
+import { itemsIngestedToday, workspaceDailyItemLimit } from '@/lib/abuse-limits'
+import { invalidateDashboard } from '@/lib/dashboard-cache'
 
 export const MAX_CSV_BYTES = 20 * 1024 * 1024
 // Bulk rows are spaced at twice the provider pace (12 s) so manual feedback keeps capacity.
@@ -53,6 +55,15 @@ export async function completeCsvImport(
     throw error
   }
 
+  // Counts today's other feedback, not this import's own rows, so a resumed import is not rejected by itself.
+  const dailyLimit = workspaceDailyItemLimit()
+  const ingestedToday = await itemsIngestedToday(csvImport.organizationId, new Date(), importId)
+  if (ingestedToday + validated.rows.length > dailyLimit) {
+    const remaining = Math.max(0, dailyLimit - ingestedToday)
+    return failImport(importId, blob.pathname,
+      `This file has ${validated.rows.length.toLocaleString('en-US')} valid rows, but this workspace can add only ${remaining.toLocaleString('en-US')} more feedback items today (daily limit ${dailyLimit.toLocaleString('en-US')}).`, deps)
+  }
+
   for (let start = 0; start < validated.rows.length; start += INSERT_BATCH) {
     const batch: Prisma.FeedbackItemCreateManyInput[] = validated.rows.slice(start, start + INSERT_BATCH).map((row) => ({
       organizationId: csvImport.organizationId,
@@ -76,6 +87,7 @@ export async function completeCsvImport(
     data: { state: 'PROCESSING', totalRows: validated.totalRows, importedRows, invalidRows: validated.errors.length },
   })
   if (moved.count !== 1) return // another callback finished first
+  await invalidateDashboard(csvImport.organizationId)
 
   try {
     await deps.deleteBlob(blob.pathname)

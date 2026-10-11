@@ -1,9 +1,20 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { successResponse, unauthorized, serverError } from '@/lib/api-response'
+import { unauthorized, serverError, validationError } from '@/lib/api-response'
+import { classificationFilter, csvCell, submittedAtFilter } from '@/lib/feedback-filters'
+import { z } from 'zod'
 import type { SessionUser } from '@/auth'
-import { Theme, Sentiment, SourceType, FeedbackStatus } from '@prisma/client'
+import { Theme, Sentiment, SourceType } from '@prisma/client'
+
+const validDate = z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid date')
+const exportQuerySchema = z.object({
+  theme: z.nativeEnum(Theme).optional(),
+  sentiment: z.nativeEnum(Sentiment).optional(),
+  source: z.nativeEnum(SourceType).optional(),
+  dateFrom: validDate.optional(),
+  dateTo: validDate.optional(),
+})
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -11,22 +22,17 @@ export async function GET(req: NextRequest) {
   const user = session.user as SessionUser
   if (!user.organizationId) return unauthorized()
 
-  const url = new URL(req.url)
-  const theme = url.searchParams.get('theme') as Theme | null
-  const sentiment = url.searchParams.get('sentiment') as Sentiment | null
-  const source = url.searchParams.get('source') as SourceType | null
-  const dateFrom = url.searchParams.get('dateFrom')
-  const dateTo = url.searchParams.get('dateTo')
+  const parsed = exportQuerySchema.safeParse(Object.fromEntries(new URL(req.url).searchParams))
+  if (!parsed.success) return validationError(parsed.error.issues[0].message)
+  const { theme, sentiment, source, dateFrom, dateTo } = parsed.data
 
   try {
     const items = await db.feedbackItem.findMany({
       where: {
         organizationId: user.organizationId,
         ...(source && { source }),
-        ...(dateFrom && { submittedAt: { gte: new Date(dateFrom) } }),
-        ...(dateTo && { submittedAt: { lte: new Date(dateTo) } }),
-        ...(theme && { classification: { theme } }),
-        ...(sentiment && { classification: { sentiment } }),
+        submittedAt: submittedAtFilter(dateFrom, dateTo),
+        classification: classificationFilter({ theme, sentiment }),
       },
       include: { classification: true },
       orderBy: { submittedAt: 'desc' },
@@ -43,9 +49,9 @@ export async function GET(req: NextRequest) {
       item.classification?.sentiment || '',
       item.classification?.productArea || '',
       item.classification?.confidenceScore?.toFixed(2) || '',
-      `"${(item.classification?.summary || '').replace(/"/g, '""')}"`,
-      `"${item.rawText.replace(/"/g, '""').replace(/\n/g, ' ')}"`,
-    ])
+      item.classification?.summary || '',
+      item.rawText,
+    ].map(csvCell))
 
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
 

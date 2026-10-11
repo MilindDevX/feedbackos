@@ -124,6 +124,20 @@ function makeRequest(method: string, url: string, body?: unknown): NextRequest {
 }
 
 // ─── Test: Unauthenticated ingest returns 401 ─────────────────────────────────
+describe('POST /api/feedback – workspace daily limit', () => {
+  it('refuses new feedback once the workspace used its daily share of the AI quota', async () => {
+    ;(auth as jest.Mock).mockResolvedValueOnce({ user: { id: 'user-1', organizationId: 'org-1' } })
+    ;(db.feedbackItem.count as jest.Mock).mockResolvedValueOnce(500)
+    ;(db.feedbackItem.create as jest.Mock).mockClear()
+
+    const res = await feedbackPost(makeRequest('POST', 'http://localhost/api/feedback', { raw_text: 'One more' }))
+
+    expect(res.status).toBe(429)
+    expect((await res.json()).code).toBe('DAILY_LIMIT')
+    expect(db.feedbackItem.create).not.toHaveBeenCalled()
+  })
+})
+
 describe('POST /api/feedback – authentication', () => {
   it('returns 401 when no session is present', async () => {
     ;(auth as jest.Mock).mockResolvedValueOnce(null)
@@ -179,7 +193,7 @@ describe('GET /api/dashboard/summary – caching', () => {
 
   it('returns cached response on 2nd call within TTL (redis.get returns data)', async () => {
     ;(auth as jest.Mock).mockResolvedValue(sessionMock)
-    ;(redis.get as jest.Mock).mockResolvedValueOnce(JSON.stringify(cachedData))
+    ;(redis.get as jest.Mock).mockResolvedValueOnce('3').mockResolvedValueOnce(JSON.stringify(cachedData)) // version, then entry
 
     const req = makeRequest('GET', 'http://localhost/api/dashboard/summary')
     const res = await dashboardSummaryGet(req)
@@ -192,7 +206,7 @@ describe('GET /api/dashboard/summary – caching', () => {
 
   it('queries PostgreSQL and sets cache on cache miss', async () => {
     ;(auth as jest.Mock).mockResolvedValue(sessionMock)
-    ;(redis.get as jest.Mock).mockResolvedValueOnce(null) // cache miss
+    ;(redis.get as jest.Mock).mockResolvedValueOnce(null).mockResolvedValueOnce(null) // no version yet, cache miss
 
     const req = makeRequest('GET', 'http://localhost/api/dashboard/summary')
     const res = await dashboardSummaryGet(req)
@@ -213,6 +227,19 @@ describe('GET /api/dashboard/summary – caching', () => {
     const keys = (redis.setex as jest.Mock).mock.calls.map((call) => call[0])
     expect(keys).toHaveLength(2)
     expect(keys[0]).toBe(keys[1])
+  })
+
+  it('stops serving old figures once feedback changes the workspace cache version', async () => {
+    ;(auth as jest.Mock).mockResolvedValue(sessionMock)
+    ;(redis.setex as jest.Mock).mockClear()
+    ;(redis.get as jest.Mock).mockResolvedValueOnce('1').mockResolvedValueOnce(null)
+    await dashboardSummaryGet(makeRequest('GET', 'http://localhost/api/dashboard/summary'))
+    ;(redis.get as jest.Mock).mockResolvedValueOnce('2').mockResolvedValueOnce(null)
+    await dashboardSummaryGet(makeRequest('GET', 'http://localhost/api/dashboard/summary'))
+
+    const [before, after] = (redis.setex as jest.Mock).mock.calls.map((call) => call[0])
+    expect(before).toContain(':v1')
+    expect(after).toContain(':v2')
   })
 
   it('reports negative share of classified feedback and the window it covers', async () => {

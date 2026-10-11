@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { redis } from '@/lib/redis'
+import { dashboardCacheKey } from '@/lib/dashboard-cache'
 import { successResponse, unauthorized, serverError } from '@/lib/api-response'
 import type { SessionUser } from '@/auth'
 
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
   const dateTo = requestedTo || new Date().toISOString()
 
   // The default window moves every millisecond; key it by name so repeat loads share one cache entry.
-  const cacheKey = `dashboard:summary:${user.organizationId}:${requestedFrom ?? `last${DEFAULT_WINDOW_DAYS}d`}:${requestedTo ?? 'now'}`
+  const cacheKey = await dashboardCacheKey(user.organizationId, `summary:${requestedFrom ?? `last${DEFAULT_WINDOW_DAYS}d`}:${requestedTo ?? 'now'}`)
 
   try {
     // Check cache

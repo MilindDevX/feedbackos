@@ -4,6 +4,7 @@ import { sentimentToEnum, themeToEnum } from '@/lib/ai/schemas'
 import type { Sentiment, Theme } from '@prisma/client'
 import { CLASSIFICATION_LEASE_SECONDS, delayProviderUntil, findRecoverableClassifications, refundUnusedReservation, reserveClassification } from './dispatch'
 import { publishClassification } from './publish'
+import { invalidateDashboard } from '@/lib/dashboard-cache'
 
 export class ClassificationDeferred extends Error {
   constructor(readonly delaySeconds: number) {
@@ -82,6 +83,7 @@ export async function processClassification(message: {
       console.error('[classification] reservation refund failed', error)
     }
     const applied = await persistClassificationIfCurrent(item.id, reservation.leaseToken, result)
+    if (applied) await invalidateDashboard(item.organizationId)
     return applied ? 'done' : 'skipped'
   } catch (error) {
     const messageText = error instanceof Error ? error.message : 'Unknown classification error'

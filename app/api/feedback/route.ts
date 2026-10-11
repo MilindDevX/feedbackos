@@ -4,6 +4,9 @@ import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { publishClassification } from '@/lib/classification/publish'
 import { rateLimit } from '@/lib/rate-limit'
+import { itemsIngestedToday, workspaceDailyItemLimit } from '@/lib/abuse-limits'
+import { invalidateDashboard } from '@/lib/dashboard-cache'
+import { classificationFilter, submittedAtFilter } from '@/lib/feedback-filters'
 import { successResponse, errorResponse, unauthorized, validationError, serverError } from '@/lib/api-response'
 import { SourceType, FeedbackStatus, Theme, Sentiment, Prisma } from '@prisma/client'
 import type { SessionUser } from '@/auth'
@@ -18,8 +21,8 @@ const listQuerySchema = z.object({
   sentiment: z.nativeEnum(Sentiment).optional(),
   source: z.nativeEnum(SourceType).optional(),
   productArea: z.string().optional(),
-  dateFrom: z.string().optional(),
-  dateTo: z.string().optional(),
+  dateFrom: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid dateFrom').optional(),
+  dateTo: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid dateTo').optional(),
   search: z.string().max(200).optional(), // bounded to prevent large payloads
 })
 
@@ -39,11 +42,8 @@ export async function GET(req: NextRequest) {
     organizationId: user.organizationId,
     ...(status && { status }),
     ...(source && { source }),
-    ...(theme && { classification: { theme } }),
-    ...(sentiment && { classification: { sentiment } }),
-    ...(productArea && { classification: { productArea } }),
-    ...(dateFrom && { submittedAt: { gte: new Date(dateFrom) } }),
-    ...(dateTo && { submittedAt: { lte: new Date(dateTo) } }),
+    classification: classificationFilter({ theme, sentiment, productArea }),
+    submittedAt: submittedAtFilter(dateFrom, dateTo),
     ...(search && { rawText: { contains: search, mode: 'insensitive' } }),
   }
 
@@ -166,6 +166,12 @@ export async function POST(req: NextRequest) {
     ? (source.toUpperCase() as SourceType)
     : 'MANUAL'
 
+  // Every workspace shares one AI quota; a daily share stops one workspace from starving the rest.
+  const dailyLimit = workspaceDailyItemLimit()
+  if (await itemsIngestedToday(user.organizationId) >= dailyLimit) {
+    return errorResponse(`This workspace has reached its limit of ${dailyLimit} new feedback items today. Try again tomorrow.`, 'DAILY_LIMIT', 429)
+  }
+
   try {
     const item = await db.feedbackItem.create({
       data: {
@@ -181,6 +187,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    await invalidateDashboard(user.organizationId)
     try {
       const jobId = await publishClassification({ feedbackItemId: item.id, organizationId: user.organizationId })
       return successResponse({ id: item.id, status: 'queued', jobId }, undefined, 202)
