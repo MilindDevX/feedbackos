@@ -45,7 +45,7 @@ export function assertEvaluationSplitAllowed(split: string, allowLockedTest: boo
     throw new Error('The test split is locked. Pass --allow-locked-test only after approval.')
   }
 
-  if (split !== 'dev' && split !== 'test') {
+  if (split !== 'dev' && split !== 'test' && split !== 'mixed') {
     throw new Error(`Unsupported evaluation split: ${split}`)
   }
 }

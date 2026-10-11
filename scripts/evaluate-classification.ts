@@ -7,7 +7,7 @@ import {
   type EvaluationRecord,
 } from '../lib/ai/evaluation'
 
-const DATASET_PATH = path.join(process.cwd(), 'evaluation', 'feedbackos-eval-v0.1.csv')
+const DEFAULT_DATASET = path.join('evaluation', 'feedbackos-eval-v0.1.csv')
 const PRODUCT_AREAS = [
   'Feedback intake/import',
   'AI classification',
@@ -53,7 +53,9 @@ async function main() {
 
   assertEvaluationSplitAllowed(split, allowLockedTest)
 
-  const csv = await readFile(DATASET_PATH, 'utf8')
+  // --dataset=evaluation/feedbackos-mixed-v0.1.csv --split=mixed runs the mixed praise+issue regression set.
+  const datasetPath = path.resolve(optionValue('--dataset') ?? DEFAULT_DATASET)
+  const csv = await readFile(datasetPath, 'utf8')
   const parsed = Papa.parse<DatasetRow>(csv, {
     header: true,
     skipEmptyLines: true,
@@ -113,7 +115,7 @@ async function main() {
   }
 
   const report = {
-    dataset: path.relative(process.cwd(), DATASET_PATH),
+    dataset: path.relative(process.cwd(), datasetPath),
     split,
     evaluatedAt: new Date().toISOString(),
     note: 'Urgency accuracy is null because the current classifier contract does not emit urgency.',

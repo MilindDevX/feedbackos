@@ -106,3 +106,9 @@ Category F1:
 
 The largest observed confusion is `bug_problem` versus `usability_issue`. These scores describe this synthetic,
 candidate-labeled benchmark only; they are not production-accuracy claims.
+
+## Mixed praise + issue regression set
+
+`feedbackos-mixed-v0.1.csv` (split `mixed`, 8 synthetic rows, added 2026-10-12) checks that praise inside a complaint, request or question is kept: rows 1–6 should come back with the issue as the primary theme, `praise` in `secondary_themes` and `mixed` sentiment; rows 7–8 are single-theme controls that must not be over-tagged. It is separate from the 192-row benchmark so that benchmark's balance stays intact.
+
+Run: `node --env-file=.env --import tsx scripts/evaluate-classification.ts --dataset=evaluation/feedbackos-mixed-v0.1.csv --split=mixed --delay-ms=9000` (the delay keeps the free Groq tier under 8K tokens per minute).
