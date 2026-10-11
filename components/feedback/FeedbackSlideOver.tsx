@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, CheckCircle, Edit3, RefreshCw, Loader2, ExternalLink, AlertCircle } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { X, CheckCircle, RefreshCw, Loader2, AlertCircle } from 'lucide-react'
 import ThemeBadge from './ThemeBadge'
 import SentimentBadge from './SentimentBadge'
 import StatusBadge from './StatusBadge'
@@ -92,7 +93,9 @@ export default function FeedbackSlideOver({ item, onClose, onReviewed }: Feedbac
     }
   }
 
-  return (
+  // Portal to <body>: an ancestor's backdrop-filter (glass-card) would otherwise become the containing
+  // block for these fixed elements and clip the panel to the table.
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
@@ -101,12 +104,18 @@ export default function FeedbackSlideOver({ item, onClose, onReviewed }: Feedbac
       />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 w-full max-w-xl bg-gray-900 border-l border-gray-800 z-50 flex flex-col slide-over">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="feedback-detail-title"
+        className="fixed inset-y-0 right-0 w-full max-w-xl bg-gray-900 border-l border-gray-800 z-50 flex flex-col slide-over"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-          <h2 className="text-base font-semibold text-white">Feedback Detail</h2>
+          <h2 id="feedback-detail-title" className="text-base font-semibold text-white">Feedback Detail</h2>
           <button
             onClick={onClose}
+            aria-label="Close feedback detail"
             className="w-8 h-8 rounded-lg hover:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
@@ -218,7 +227,7 @@ export default function FeedbackSlideOver({ item, onClose, onReviewed }: Feedbac
                             {action.action === 'OVERRIDDEN' && `Changed to ${action.newTheme} · ${action.newSentiment}`}
                             {action.action === 'RECLASSIFIED' && 'Triggered re-classification'}
                           </p>
-                          {action.note && <p className="text-xs text-gray-400 mt-1 italic">"{action.note}"</p>}
+                          {action.note && <p className="text-xs text-gray-400 mt-1 italic">&ldquo;{action.note}&rdquo;</p>}
                         </div>
                       </div>
                     ))}
@@ -257,6 +266,7 @@ export default function FeedbackSlideOver({ item, onClose, onReviewed }: Feedbac
           </div>
         )}
       </div>
-    </>
+    </>,
+    document.body
   )
 }
