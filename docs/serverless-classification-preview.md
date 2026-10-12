@@ -1,3 +1,5 @@
+> **Historical record (2026-10).** Evidence gathered while the serverless classifier was gated in preview; it has since shipped to production. For current behaviour see [architecture.md](architecture.md) and [operations.md](operations.md).
+
 # Serverless classification preview gate
 
 Status: isolated Preview deployed and core manual-feedback/recovery workflow verified 2026-10-02. Controlled 429 recovery passed; crash/redelivery did not pass. Other release gates remain open; production is not authorized.
