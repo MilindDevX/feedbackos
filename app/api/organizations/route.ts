@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/auth'
 import { rateLimitBy } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
-import { successResponse, unauthorized, serverError, validationError, forbidden } from '@/lib/api-response'
+import { successResponse, errorResponse, unauthorized, serverError, validationError, forbidden } from '@/lib/api-response'
 import type { SessionUser } from '@/auth'
 
 // ─── POST /api/organizations — Create new org ─────────────────────────────────
@@ -28,6 +28,11 @@ export async function POST(req: NextRequest) {
   const { name, slug } = parsed.data
 
   try {
+    // One workspace per person: the app has no workspace switcher, and each workspace gets its own
+    // share of the AI quota, so extra workspaces would be invisible and a way around that limit.
+    const existingMembership = await db.organizationMember.findFirst({ where: { userId: session.user.id }, select: { id: true } })
+    if (existingMembership) return errorResponse('You already have a workspace.', 'WORKSPACE_EXISTS', 409)
+
     // Check slug uniqueness
     const existing = await db.organization.findUnique({ where: { slug } })
     if (existing) return validationError('This organization slug is already taken')

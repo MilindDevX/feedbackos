@@ -13,6 +13,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // Google only issues verified addresses, so a Google sign-in with the same email as an existing
+      // magic-link account is the same person; without this they were bounced back to /login.
+      allowDangerousEmailAccountLinking: true,
     }),
     EmailProvider({
       server: {
