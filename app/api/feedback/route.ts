@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { publishClassification } from '@/lib/classification/publish'
-import { rateLimit } from '@/lib/rate-limit'
+import { rateLimit, rateLimitBy } from '@/lib/rate-limit'
 import { itemsIngestedToday, workspaceDailyItemLimit } from '@/lib/abuse-limits'
 import { invalidateDashboard } from '@/lib/dashboard-cache'
 import { classificationFilter, submittedAtFilter } from '@/lib/feedback-filters'
@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.id) return unauthorized()
   const user = session.user as SessionUser
   if (!user.organizationId) return errorResponse('No organization', 'NO_ORG', 400)
+  const limited = await rateLimitBy('feedback-list', user.id, 120)
+  if (limited) return limited
 
   const url = new URL(req.url)
   const parsed = listQuerySchema.safeParse(Object.fromEntries(url.searchParams))
@@ -151,6 +153,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return unauthorized()
   const user = session.user as SessionUser
   if (!user.organizationId) return errorResponse('No organization', 'NO_ORG', 400)
+  const userLimited = await rateLimitBy('feedback-ingest-user', user.id, 30)
+  if (userLimited) return userLimited
 
   let body: unknown
   try {

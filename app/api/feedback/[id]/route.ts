@@ -4,7 +4,7 @@ import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { publishClassification } from '@/lib/classification/publish'
 import { invalidateDashboard } from '@/lib/dashboard-cache'
-import { hitRateLimit } from '@/lib/rate-limit'
+import { hitRateLimit, rateLimitBy } from '@/lib/rate-limit'
 import { successResponse, errorResponse, unauthorized, notFound, serverError, validationError, forbidden } from '@/lib/api-response'
 import { Theme, Sentiment } from '@prisma/client'
 import type { SessionUser } from '@/auth'
@@ -18,6 +18,8 @@ export async function GET(
   if (!session?.user?.id) return unauthorized()
   const user = session.user as SessionUser
   if (!user.organizationId) return forbidden()
+  const limited = await rateLimitBy('feedback-detail', user.id, 120)
+  if (limited) return limited
   const { id } = await params
 
   try {
@@ -57,6 +59,8 @@ export async function PATCH(
   const user = session.user as SessionUser
   if (!user.organizationId) return forbidden()
   if (user.role === 'VIEWER') return forbidden()
+  const limited = await rateLimitBy('feedback-review', user.id, 60)
+  if (limited) return limited
   const { id } = await params
 
   let body: unknown

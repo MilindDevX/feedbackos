@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { rateLimit } from '@/lib/rate-limit'
 import { getClassifyQueue } from '@/lib/queue'
 import { verifyIntercomSignature, extractIntercomText, extractIntercomMetadata } from '@/lib/integrations/intercom'
 import type { IntercomConversationPayload } from '@/lib/integrations/intercom'
@@ -7,12 +8,18 @@ import type { IntercomConversationPayload } from '@/lib/integrations/intercom'
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimit(req, 'intercom-webhook', 300)
+  if (limited) return limited
   const rawBody = await req.text()
   const signature = req.headers.get('X-Hub-Signature-256') || ''
   const secret = process.env.INTERCOM_WEBHOOK_SECRET || ''
 
-  // HMAC verification — reject immediately if invalid
-  if (secret && !verifyIntercomSignature(rawBody, signature, secret)) {
+  // Fail closed: without a configured secret nobody can prove a request came from Intercom.
+  if (!secret) {
+    console.error('[Intercom Webhook] INTERCOM_WEBHOOK_SECRET is not configured')
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
+  }
+  if (!verifyIntercomSignature(rawBody, signature, secret)) {
     console.warn('[Intercom Webhook] Invalid signature')
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }

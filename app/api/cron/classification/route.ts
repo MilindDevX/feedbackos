@@ -1,13 +1,21 @@
+import { timingSafeEqual } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { findRecoverableClassifications } from '@/lib/classification/dispatch'
 import { publishClassification } from '@/lib/classification/publish'
 import { privateCsvBlob } from '@/lib/imports/blob'
 import { repairCsvImports } from '@/lib/imports/csv'
 
+// Constant-time comparison so response timing reveals nothing about the secret.
+function bearerMatches(header: string | null, secret: string): boolean {
+  const expected = Buffer.from(`Bearer ${secret}`)
+  const actual = Buffer.from(header ?? '')
+  return actual.length === expected.length && timingSafeEqual(actual, expected)
+}
+
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET
   if (!secret) return NextResponse.json({ error: 'Cron not configured' }, { status: 503 })
-  if (request.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!bearerMatches(request.headers.get('authorization'), secret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/auth'
+import { rateLimitBy } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
 import { successResponse, unauthorized, serverError, validationError, forbidden } from '@/lib/api-response'
 import type { SessionUser } from '@/auth'
@@ -14,6 +15,9 @@ const createOrgSchema = z.object({
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return unauthorized()
+  // Workspaces each get their own share of the AI quota, so creating many is capped.
+  const limited = await rateLimitBy('org-create', session.user.id, 3, 86400)
+  if (limited) return limited
 
   let body: unknown
   try { body = await req.json() } catch { return validationError('Invalid JSON') }

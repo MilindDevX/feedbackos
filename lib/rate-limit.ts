@@ -51,3 +51,20 @@ export async function rateLimit(
     }
   )
 }
+
+/**
+ * Per-user (or per-workspace) rate limit for signed-in routes; IP limits are easy to dodge by rotating addresses,
+ * an account is not. Returns a 429 response when over the limit, null otherwise.
+ */
+export async function rateLimitBy(
+  bucket: string,
+  id: string,
+  limit: number,
+  windowSecs: number = 60
+): Promise<NextResponse | null> {
+  if (!(await hitRateLimit(`${bucket}:${id}`, limit, windowSecs))) return null
+  return NextResponse.json(
+    { error: 'Too many requests. Please slow down and try again shortly.', code: 'RATE_LIMITED' },
+    { status: 429, headers: { 'Retry-After': String(windowSecs), 'X-RateLimit-Limit': String(limit), 'X-RateLimit-Remaining': '0' } }
+  )
+}

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
+import { rateLimitBy } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
 import { getZendeskQueue } from '@/lib/queue'
 import { successResponse, unauthorized, notFound, serverError, forbidden } from '@/lib/api-response'
@@ -11,6 +12,8 @@ export async function POST(req: NextRequest) {
   const user = session.user as SessionUser
   if (!user.organizationId) return forbidden()
   if (!['OWNER', 'ADMIN', 'MEMBER'].includes(user.role || '')) return forbidden()
+  const limited = await rateLimitBy('zendesk-sync', user.organizationId, 6, 3600)
+  if (limited) return limited
 
   try {
     const source = await db.ingestionSource.findFirst({

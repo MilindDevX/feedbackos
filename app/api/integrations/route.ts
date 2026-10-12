@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/auth'
+import { rateLimitBy } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
 import { encrypt } from '@/lib/encryption'
 import { successResponse, unauthorized, serverError, validationError, forbidden } from '@/lib/api-response'
@@ -13,6 +14,8 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.id) return unauthorized()
   const user = session.user as SessionUser
   if (!user.organizationId) return forbidden()
+  const limited = await rateLimitBy('integrations-list', user.id, 60)
+  if (limited) return limited
 
   try {
     const sources = await db.ingestionSource.findMany({
@@ -52,6 +55,8 @@ export async function POST(req: NextRequest) {
   if (!['OWNER', 'ADMIN'].includes(user.role || '')) {
     return forbidden()
   }
+  const limited = await rateLimitBy('integrations-save', user.id, 10, 3600)
+  if (limited) return limited
 
   let body: unknown
   try { body = await req.json() } catch { return validationError('Invalid JSON') }

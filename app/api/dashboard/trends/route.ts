@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
+import { rateLimitBy } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
 import { redis } from '@/lib/redis'
 import { dashboardCacheKey } from '@/lib/dashboard-cache'
@@ -14,6 +15,8 @@ export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return unauthorized()
   const user = session.user as SessionUser
+  const limited = await rateLimitBy('dashboard-trends', user.id, 60, 60)
+  if (limited) return limited
   if (!user.organizationId) return successResponse({ weeks: [], themes: [] })
 
   const cacheKey = await dashboardCacheKey(user.organizationId, 'trends')

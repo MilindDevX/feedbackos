@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
+import { rateLimitBy } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
 import { unauthorized, serverError, validationError } from '@/lib/api-response'
 import { classificationFilter, csvCell, submittedAtFilter } from '@/lib/feedback-filters'
@@ -21,6 +22,9 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.id) return unauthorized()
   const user = session.user as SessionUser
   if (!user.organizationId) return unauthorized()
+  // Exports read up to 10,000 rows; a few per hour covers real use.
+  const limited = await rateLimitBy('export', user.id, 10, 3600)
+  if (limited) return limited
 
   const parsed = exportQuerySchema.safeParse(Object.fromEntries(new URL(req.url).searchParams))
   if (!parsed.success) return validationError(parsed.error.issues[0].message)
