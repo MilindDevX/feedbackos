@@ -6,6 +6,7 @@ import { publishClassification } from '@/lib/classification/publish'
 import { rateLimit, rateLimitBy } from '@/lib/rate-limit'
 import { itemsIngestedToday, workspaceDailyItemLimit } from '@/lib/abuse-limits'
 import { invalidateDashboard } from '@/lib/dashboard-cache'
+import { READ_ONLY_MESSAGE, canWrite } from '@/lib/permissions'
 import { classificationFilter, submittedAtFilter } from '@/lib/feedback-filters'
 import { successResponse, errorResponse, unauthorized, validationError, serverError } from '@/lib/api-response'
 import { SourceType, FeedbackStatus, Theme, Sentiment, Prisma } from '@prisma/client'
@@ -153,6 +154,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return unauthorized()
   const user = session.user as SessionUser
   if (!user.organizationId) return errorResponse('No organization', 'NO_ORG', 400)
+  if (!canWrite(user)) return errorResponse(READ_ONLY_MESSAGE, 'READ_ONLY', 403)
   const userLimited = await rateLimitBy('feedback-ingest-user', user.id, 30)
   if (userLimited) return userLimited
 

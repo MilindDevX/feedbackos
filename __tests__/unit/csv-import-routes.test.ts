@@ -22,7 +22,7 @@ import {
   authorizeCsvUpload, cancelCsvImport, completeAuthorizedCsvUpload, getCsvImportStatus, startCsvImport,
 } from '@/lib/imports/routes'
 
-const user = { id: 'user-1', organizationId: 'org-1' }
+const user = { id: 'user-1', organizationId: 'org-1', role: 'OWNER' }
 const liveImport = { id: 'imp-1', organizationId: 'org-1', state: 'UPLOADING', blobPathname: 'imports/org-1/imp-1.csv' }
 
 beforeEach(() => jest.clearAllMocks())
@@ -30,7 +30,7 @@ beforeEach(() => jest.clearAllMocks())
 describe('startCsvImport', () => {
   it('rejects anonymous users and users without an organization', async () => {
     expect((await startCsvImport(null, { columnMapping: { rawText: 'text' } })).status).toBe(401)
-    expect((await startCsvImport({ id: 'u', organizationId: undefined }, { columnMapping: { rawText: 'text' } })).status).toBe(400)
+    expect((await startCsvImport({ id: 'u', organizationId: undefined, role: 'OWNER' }, { columnMapping: { rawText: 'text' } })).status).toBe(400)
   })
 
   it('rejects a mapping without a text column', async () => {
@@ -64,7 +64,7 @@ describe('authorizeCsvUpload', () => {
   it('denies anonymous, cross-organization, finished and mismatched-path uploads', async () => {
     await expect(authorizeCsvUpload(null, liveImport.blobPathname, payload)).rejects.toThrow()
     jest.mocked(db.csvImport.findFirst).mockResolvedValueOnce(null as never)
-    await expect(authorizeCsvUpload({ id: 'x', organizationId: 'org-2' }, liveImport.blobPathname, payload)).rejects.toThrow()
+    await expect(authorizeCsvUpload({ id: 'x', organizationId: 'org-2', role: 'OWNER' }, liveImport.blobPathname, payload)).rejects.toThrow()
     jest.mocked(db.csvImport.findFirst).mockResolvedValueOnce({ ...liveImport, state: 'PROCESSING' } as never)
     await expect(authorizeCsvUpload(user, liveImport.blobPathname, payload)).rejects.toThrow()
     jest.mocked(db.csvImport.findFirst).mockResolvedValueOnce(liveImport as never)
@@ -155,5 +155,17 @@ describe('abandoned uploads do not lock the workspace', () => {
     jest.mocked(db.csvImport.updateMany).mockResolvedValue({ count: 0 } as never)
     expect((await cancelCsvImport(user, 'imp-1')).status).toBe(409)
     expect((await cancelCsvImport(null, 'imp-1')).status).toBe(401)
+  })
+})
+
+describe('view-only members', () => {
+  const viewer = { id: 'viewer-1', organizationId: 'org-1', role: 'VIEWER' }
+
+  it('cannot start, upload to or cancel an import', async () => {
+    expect((await startCsvImport(viewer, { columnMapping: { rawText: 'text' } })).status).toBe(403)
+    await expect(authorizeCsvUpload(viewer, liveImport.blobPathname, JSON.stringify({ importId: 'imp-1' }))).rejects.toThrow('view-only')
+    expect((await cancelCsvImport(viewer, 'imp-1')).status).toBe(403)
+    expect(db.csvImport.create).not.toHaveBeenCalled()
+    expect(db.csvImport.updateMany).not.toHaveBeenCalled()
   })
 })

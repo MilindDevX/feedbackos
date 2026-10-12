@@ -124,9 +124,21 @@ function makeRequest(method: string, url: string, body?: unknown): NextRequest {
 }
 
 // ─── Test: Unauthenticated ingest returns 401 ─────────────────────────────────
+describe('POST /api/feedback – view-only members', () => {
+  it('refuses to add feedback for a viewer', async () => {
+    ;(auth as jest.Mock).mockResolvedValueOnce({ user: { id: 'user-1', organizationId: 'org-1', role: 'VIEWER' } })
+    ;(db.feedbackItem.create as jest.Mock).mockClear()
+
+    const res = await feedbackPost(makeRequest('POST', 'http://localhost/api/feedback', { raw_text: 'Viewer tries to add' }))
+
+    expect(res.status).toBe(403)
+    expect(db.feedbackItem.create).not.toHaveBeenCalled()
+  })
+})
+
 describe('POST /api/feedback – workspace daily limit', () => {
   it('refuses new feedback once the workspace used its daily share of the AI quota', async () => {
-    ;(auth as jest.Mock).mockResolvedValueOnce({ user: { id: 'user-1', organizationId: 'org-1' } })
+    ;(auth as jest.Mock).mockResolvedValueOnce({ user: { id: 'user-1', organizationId: 'org-1', role: 'MEMBER' } })
     ;(db.feedbackItem.count as jest.Mock).mockResolvedValueOnce(500)
     ;(db.feedbackItem.create as jest.Mock).mockClear()
 
@@ -155,7 +167,7 @@ describe('POST /api/feedback – authentication', () => {
 
   it('returns 202 when session is valid and body is correct', async () => {
     ;(auth as jest.Mock).mockResolvedValueOnce({
-      user: { id: 'user-1', organizationId: 'org-1' },
+      user: { id: 'user-1', organizationId: 'org-1', role: 'MEMBER' },
     })
 
     const req = makeRequest('POST', 'http://localhost/api/feedback', {
@@ -170,7 +182,7 @@ describe('POST /api/feedback – authentication', () => {
   })
 
   it('returns a truthful pending item when queue publishing fails', async () => {
-    ;(auth as jest.Mock).mockResolvedValueOnce({ user: { id: 'user-1', organizationId: 'org-1' } })
+    ;(auth as jest.Mock).mockResolvedValueOnce({ user: { id: 'user-1', organizationId: 'org-1', role: 'MEMBER' } })
     jest.mocked(publishClassification).mockRejectedValueOnce(new Error('queue unavailable'))
 
     const res = await feedbackPost(makeRequest('POST', 'http://localhost/api/feedback', {
@@ -184,7 +196,7 @@ describe('POST /api/feedback – authentication', () => {
 
 // ─── Test: Dashboard summary Redis caching ────────────────────────────────────
 describe('GET /api/dashboard/summary – caching', () => {
-  const sessionMock = { user: { id: 'user-1', organizationId: 'org-1' } }
+  const sessionMock = { user: { id: 'user-1', organizationId: 'org-1', role: 'MEMBER' } }
   const cachedData = {
     total: 42, needsReview: 5, negativePercent: 20,
     byTheme: { BUG_PROBLEM: 10 }, bySentiment: { NEGATIVE: 8 },

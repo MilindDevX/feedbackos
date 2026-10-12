@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { rateLimitBy } from '@/lib/rate-limit'
+import { integrationsEnabled } from '@/lib/features'
 import { db } from '@/lib/db'
 import { getZendeskQueue } from '@/lib/queue'
-import { successResponse, unauthorized, notFound, serverError, forbidden } from '@/lib/api-response'
+import { successResponse, errorResponse, unauthorized, notFound, serverError, forbidden } from '@/lib/api-response'
 import type { SessionUser } from '@/auth'
 
 export async function POST(req: NextRequest) {
@@ -14,6 +15,7 @@ export async function POST(req: NextRequest) {
   if (!['OWNER', 'ADMIN', 'MEMBER'].includes(user.role || '')) return forbidden()
   const limited = await rateLimitBy('zendesk-sync', user.organizationId, 6, 3600)
   if (limited) return limited
+  if (!integrationsEnabled()) return errorResponse('Integrations are coming soon.', 'COMING_SOON', 503)
 
   try {
     const source = await db.ingestionSource.findFirst({

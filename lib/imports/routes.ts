@@ -4,9 +4,10 @@ import { randomUUID } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { READ_ONLY_MESSAGE, canWrite } from '@/lib/permissions'
 import { completeCsvImport, MAX_CSV_BYTES, refreshCsvImportState, type CsvImportDeps } from './csv'
 
-type ImportUser = { id: string; organizationId?: string | null } | null
+type ImportUser = { id: string; organizationId?: string | null; role?: string | null } | null
 type Result = { status: number; body: Record<string, unknown> }
 
 const column = z.string().trim().min(1).max(100)
@@ -24,6 +25,7 @@ const STALE_UPLOAD_MS = 15 * 60_000
 export async function startCsvImport(user: ImportUser, body: unknown): Promise<Result> {
   if (!user?.id) return { status: 401, body: { error: 'Unauthorized' } }
   if (!user.organizationId) return { status: 400, body: { error: 'No organization', code: 'NO_ORG' } }
+  if (!canWrite(user)) return { status: 403, body: { error: READ_ONLY_MESSAGE, code: 'READ_ONLY' } }
   const parsed = StartSchema.safeParse(body)
   if (!parsed.success) return { status: 400, body: { error: 'Choose the column that holds the feedback text.' } }
 
@@ -53,6 +55,7 @@ export async function startCsvImport(user: ImportUser, body: unknown): Promise<R
 
 export async function authorizeCsvUpload(user: ImportUser, pathname: string, clientPayload: string | null) {
   if (!user?.id || !user.organizationId) throw new Error('Unauthorized')
+  if (!canWrite(user)) throw new Error(READ_ONLY_MESSAGE)
   const payload = TokenPayloadSchema.safeParse(JSON.parse(clientPayload ?? 'null'))
   if (!payload.success) throw new Error('Missing import reference')
   const csvImport = await db.csvImport.findFirst({ where: { id: payload.data.importId, organizationId: user.organizationId } })
@@ -112,6 +115,7 @@ export async function getCsvImportStatus(user: ImportUser, importId: string): Pr
 // The browser cancels its own import when the direct upload fails, so the user can retry immediately.
 export async function cancelCsvImport(user: ImportUser, importId: string): Promise<Result> {
   if (!user?.id || !user.organizationId) return { status: 401, body: { error: 'Unauthorized' } }
+  if (!canWrite(user)) return { status: 403, body: { error: READ_ONLY_MESSAGE, code: 'READ_ONLY' } }
   const cancelled = await db.csvImport.updateMany({
     where: { id: importId, organizationId: user.organizationId, state: 'UPLOADING' },
     data: { state: 'FAILED', lastError: 'The upload was cancelled.' },

@@ -2,9 +2,10 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/auth'
 import { rateLimitBy } from '@/lib/rate-limit'
+import { integrationsEnabled } from '@/lib/features'
 import { db } from '@/lib/db'
 import { encrypt } from '@/lib/encryption'
-import { successResponse, unauthorized, serverError, validationError, forbidden } from '@/lib/api-response'
+import { successResponse, errorResponse, unauthorized, serverError, validationError, forbidden } from '@/lib/api-response'
 import type { SessionUser } from '@/auth'
 import { SourceType } from '@prisma/client'
 
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
   }
   const limited = await rateLimitBy('integrations-save', user.id, 10, 3600)
   if (limited) return limited
+  if (!integrationsEnabled()) return errorResponse('Integrations are coming soon.', 'COMING_SOON', 503)
 
   let body: unknown
   try { body = await req.json() } catch { return validationError('Invalid JSON') }

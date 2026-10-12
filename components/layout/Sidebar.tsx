@@ -65,6 +65,9 @@ export default function Sidebar({ user }: { user: SessionUser }) {
       </div>
       <div className="px-2 py-3 border-t border-line">
         <UserCard user={user} />
+        <p className="px-2.5 pt-1 text-xs text-ink-3">
+          <a href="/privacy" className="hover:text-ink">Privacy</a> · <a href="/terms" className="hover:text-ink">Terms</a>
+        </p>
       </div>
     </aside>
   )

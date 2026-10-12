@@ -8,6 +8,8 @@ import { Upload, FileText, X, Loader2, CheckCircle2, ArrowRight } from 'lucide-r
 import { Notice, PageHeader, Panel, buttonClass, inputClass } from '@/components/ui/primitives'
 import { cn } from '@/lib/utils'
 import { detectCsvColumns } from '@/lib/integrations/csv'
+import { useSession } from 'next-auth/react'
+import { canWrite } from '@/lib/permissions'
 
 const MAX_CSV_BYTES = 20 * 1024 * 1024
 const ACTIVE_IMPORT_KEY = 'feedbackos.activeCsvImport'
@@ -39,6 +41,8 @@ const storeImport = (id: string | null) => {
 }
 
 export default function IngestPage() {
+  const { data: session, status: sessionStatus } = useSession()
+  const readOnly = sessionStatus === 'authenticated' && !canWrite(session?.user as { role?: string } | undefined)
   // Manual entry state
   const [manualText, setManualText] = useState('')
   const [manualLoading, setManualLoading] = useState(false)
@@ -189,8 +193,9 @@ export default function IngestPage() {
   return (
     <>
       <PageHeader title="Ingest" description="Import a CSV or add one item. Classification starts on its own." />
+      {readOnly && <div className="mb-6"><Notice tone="info">This workspace is view-only, so importing and adding feedback are turned off.</Notice></div>}
 
-      <div className="grid gap-6 lg:grid-cols-5 items-start">
+      <fieldset disabled={readOnly} className={cn('grid gap-6 lg:grid-cols-5 items-start min-w-0', readOnly && 'opacity-60 pointer-events-none')}>
         <Panel className="p-5 sm:p-6 lg:col-span-3">
           <h2 className="font-display text-base font-semibold text-ink">Import a CSV</h2>
           <p className="mt-1 text-sm text-ink-3">Up to 2,000 rows and 20 MiB. On the free AI tier, large files classify gradually (about 14 hours for 2,000 rows).</p>
@@ -349,7 +354,7 @@ export default function IngestPage() {
             {manualError && <Notice tone="error">{manualError}</Notice>}
           </form>
         </Panel>
-      </div>
+      </fieldset>
     </>
   )
 }

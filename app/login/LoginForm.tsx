@@ -2,12 +2,13 @@
 
 import { signIn } from 'next-auth/react'
 import { useState } from 'react'
-import { Mail, ArrowRight, Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { Mail, ArrowRight, Loader2, Eye } from 'lucide-react'
 import { Brand } from '@/components/ui/Brand'
 import { buttonClass, inputClass } from '@/components/ui/primitives'
 import { cn } from '@/lib/utils'
 
-export default function LoginForm({ initialError = '' }: { initialError?: string }) {
+export default function LoginForm({ initialError = '', demo = false }: { initialError?: string; demo?: boolean }) {
   const [email, setEmail] = useState('')
   const [emailSent, setEmailSent] = useState(false)
   const [loading, setLoading] = useState<'google' | 'email' | null>(null)
@@ -129,8 +130,20 @@ export default function LoginForm({ initialError = '' }: { initialError?: string
                 )}
                 Continue with Google
               </button>
+
+              {demo && (
+                <a href="/api/demo" className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-line-strong px-4 py-3 text-sm text-ink-2 hover:text-ink hover:border-accent hover:bg-hover transition-colors">
+                  <Eye className="w-4 h-4 text-accent" aria-hidden="true" />
+                  Just looking? <span className="font-medium text-accent">Explore the demo</span> without signing up
+                </a>
+              )}
             </div>
           )}
+
+          <p className="mt-10 text-xs text-ink-3">
+            By continuing you agree to the <Link href="/terms" className="underline underline-offset-2 hover:text-ink">Terms</Link> and{' '}
+            <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">Privacy Policy</Link>.
+          </p>
         </div>
       </main>
     </div>

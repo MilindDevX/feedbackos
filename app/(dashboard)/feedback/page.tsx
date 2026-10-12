@@ -3,6 +3,8 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import { Plus, Upload } from 'lucide-react'
 import { PageHeader, buttonClass } from '@/components/ui/primitives'
+import { auth, type SessionUser } from '@/auth'
+import { canWrite } from '@/lib/permissions'
 
 export const metadata: Metadata = {
   title: 'Feedback — FeedbackOS',
@@ -13,12 +15,14 @@ const STATUSES = ['NEEDS_REVIEW', 'CLASSIFIED', 'REVIEWED', 'PENDING']
 
 export default async function FeedbackPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const { status } = await searchParams
+  const session = await auth()
+  const writable = canWrite(session?.user as SessionUser | undefined)
   return (
     <>
       <PageHeader
         title="Feedback"
         description="Every item, classified by theme and sentiment. Open one to review it."
-        actions={<>
+        actions={writable && <>
           <Link href="/ingest" className={buttonClass('secondary')}><Upload className="w-4 h-4" aria-hidden="true" />Import CSV</Link>
           <Link href="/ingest#manual" className={buttonClass('primary')}><Plus className="w-4 h-4" aria-hidden="true" />Add feedback</Link>
         </>}

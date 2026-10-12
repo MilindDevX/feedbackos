@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useSession } from 'next-auth/react'
+import { canWrite } from '@/lib/permissions'
 import { X, Check, RefreshCw, Loader2, AlertCircle } from 'lucide-react'
 import ThemeBadge from './ThemeBadge'
 import SentimentBadge from './SentimentBadge'
@@ -52,6 +54,8 @@ export default function FeedbackSlideOver({ item, onClose, onReviewed }: Feedbac
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const { data: session } = useSession()
+  const writable = canWrite(session?.user as { role?: string } | undefined)
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -207,7 +211,7 @@ export default function FeedbackSlideOver({ item, onClose, onReviewed }: Feedbac
           )}
         </div>
 
-        {!loading && detail && ['NEEDS_REVIEW', 'CLASSIFIED'].includes(detail.status) && (
+        {writable && !loading && detail && ['NEEDS_REVIEW', 'CLASSIFIED'].includes(detail.status) && (
           <div className="flex-shrink-0 px-5 py-4 border-t border-line flex gap-2">
             <button onClick={() => handleAction('ACCEPTED')} disabled={actionLoading !== null} className={buttonClass('primary', 'md', 'flex-1')}>
               {actionLoading === 'ACCEPTED' ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Check className="w-4 h-4" aria-hidden="true" />}

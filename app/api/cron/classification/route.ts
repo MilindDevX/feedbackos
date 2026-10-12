@@ -4,6 +4,7 @@ import { findRecoverableClassifications } from '@/lib/classification/dispatch'
 import { publishClassification } from '@/lib/classification/publish'
 import { privateCsvBlob } from '@/lib/imports/blob'
 import { repairCsvImports } from '@/lib/imports/csv'
+import { db } from '@/lib/db'
 
 // Constant-time comparison so response timing reveals nothing about the secret.
 function bearerMatches(header: string | null, secret: string): boolean {
@@ -25,6 +26,12 @@ export async function GET(request: NextRequest) {
     await repairCsvImports(now, privateCsvBlob)
   } catch (error) {
     console.error('[cron] CSV import repair failed', error)
+  }
+  // Demo visits create short sessions; expired ones are never read again.
+  try {
+    await db.session.deleteMany({ where: { expires: { lt: new Date(now.getTime() - 86_400_000) } } })
+  } catch (error) {
+    console.error('[cron] session cleanup failed', error)
   }
   const work = await findRecoverableClassifications(now, 100)
   const results = await Promise.allSettled(work.map((message) => publishClassification(message, 0, now.getTime())))

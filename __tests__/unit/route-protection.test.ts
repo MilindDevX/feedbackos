@@ -39,7 +39,17 @@ describe('rateLimitBy', () => {
 
 describe('Intercom webhook authentication', () => {
   const original = process.env.INTERCOM_WEBHOOK_SECRET
-  afterEach(() => { process.env.INTERCOM_WEBHOOK_SECRET = original })
+  beforeEach(() => { process.env.INTEGRATIONS_ENABLED = '1' })
+  afterEach(() => { process.env.INTERCOM_WEBHOOK_SECRET = original; delete process.env.INTEGRATIONS_ENABLED })
+
+  it('accepts nothing while integrations are switched off', async () => {
+    delete process.env.INTEGRATIONS_ENABLED
+    process.env.INTERCOM_WEBHOOK_SECRET = 'secret'
+    jest.mocked(redis.incr).mockResolvedValue(1 as never)
+    const res = await post()
+    expect(res.status).toBe(503)
+    expect((await res.json()).code).toBe('COMING_SOON')
+  })
 
   const post = (headers: Record<string, string> = {}) => intercomWebhook(new NextRequest('http://localhost/api/webhooks/intercom', {
     method: 'POST', body: JSON.stringify({ topic: 'conversation.user.created' }), headers,
