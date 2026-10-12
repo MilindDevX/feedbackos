@@ -7,7 +7,8 @@ import ThemeBadge from './ThemeBadge'
 import StatusBadge from './StatusBadge'
 import FeedbackSlideOver from './FeedbackSlideOver'
 import { buttonClass, inputClass } from '@/components/ui/primitives'
-import { cn, formatSentiment, formatSource, formatTheme, timeAgo } from '@/lib/utils'
+import SentimentLegend from './SentimentLegend'
+import { cn, formatSentiment, formatTheme, timeAgo } from '@/lib/utils'
 
 interface FeedbackItem {
   id: string
@@ -41,7 +42,11 @@ const STATUS_TABS = [
 ]
 const THEMES = ['BUG_PROBLEM', 'FEATURE_REQUEST', 'USABILITY_ISSUE', 'QUESTION_SUPPORT', 'PRAISE', 'OTHER']
 const SENTIMENTS = ['POSITIVE', 'NEGATIVE', 'MIXED', 'NEUTRAL']
-const SOURCES = ['MANUAL', 'CSV', 'ZENDESK', 'INTERCOM', 'API']
+const PERIODS = [
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+]
 
 interface FeedbackTableProps {
   embedded?: boolean
@@ -53,7 +58,9 @@ export default function FeedbackTable({ embedded = false, pageSize = 20, initial
   const [status, setStatus] = useState(initialStatus)
   const [theme, setTheme] = useState('')
   const [sentiment, setSentiment] = useState('')
-  const [source, setSource] = useState('')
+  const [productArea, setProductArea] = useState('')
+  const [period, setPeriod] = useState('')
+  const [productAreas, setProductAreas] = useState<Array<{ name: string; count: number }>>([])
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -67,9 +74,22 @@ export default function FeedbackTable({ embedded = false, pageSize = 20, initial
     ...(status && { status }),
     ...(theme && { theme }),
     ...(sentiment && { sentiment }),
-    ...(source && { source }),
+    ...(productArea && { productArea }),
+    ...(period && { withinDays: period }),
     ...(search && { search }),
-  }).toString(), [page, pageSize, status, theme, sentiment, source, search])
+  }).toString(), [page, pageSize, status, theme, sentiment, productArea, period, search])
+
+  // Product areas come from this workspace's own data, so every choice returns results.
+  useEffect(() => {
+    if (embedded) return
+    let cancelled = false
+    fetch('/api/feedback/product-areas')
+      .then((res) => res.json())
+      .then((json) => { if (!cancelled) setProductAreas(json.data || []) })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [embedded])
+
 
   useEffect(() => {
     const timer = setTimeout(() => { setSearch(searchInput.trim()); setPage(1) }, 300)
@@ -100,9 +120,9 @@ export default function FeedbackTable({ embedded = false, pageSize = 20, initial
   const items = result?.items ?? []
   const total = result?.total ?? 0
   const totalPages = result?.totalPages ?? 1
-  const hasFilters = Boolean(status || theme || sentiment || source || search)
+  const hasFilters = Boolean(status || theme || sentiment || productArea || period || search)
   const clearFilters = () => {
-    setStatus(''); setTheme(''); setSentiment(''); setSource(''); setSearchInput(''); setSearch(''); setPage(1)
+    setStatus(''); setTheme(''); setSentiment(''); setProductArea(''); setPeriod(''); setSearchInput(''); setSearch(''); setPage(1)
   }
   const first = total === 0 ? 0 : (page - 1) * pageSize + 1
   const last = Math.min(page * pageSize, total)
@@ -111,6 +131,7 @@ export default function FeedbackTable({ embedded = false, pageSize = 20, initial
     <div>
       {!embedded && (
         <div className="space-y-3 mb-4">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-1 overflow-x-auto -mx-1 px-1 pb-1" role="group" aria-label="Filter by status">
             {STATUS_TABS.map((tab) => (
               <button
@@ -126,6 +147,8 @@ export default function FeedbackTable({ embedded = false, pageSize = 20, initial
               </button>
             ))}
           </div>
+          <SentimentLegend />
+          </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <label className="relative flex-1 min-w-0">
               <span className="sr-only">Search feedback</span>
@@ -139,21 +162,22 @@ export default function FeedbackTable({ embedded = false, pageSize = 20, initial
                 className={cn(inputClass, 'pl-9 h-9')}
               />
             </label>
-            <div className="grid grid-cols-3 gap-2 sm:flex">
+            <div className="grid grid-cols-2 gap-2 sm:flex">
               {[
-                { label: 'Theme', value: theme, set: setTheme, options: THEMES, format: formatTheme },
-                { label: 'Sentiment', value: sentiment, set: setSentiment, options: SENTIMENTS, format: formatSentiment },
-                { label: 'Source', value: source, set: setSource, options: SOURCES, format: formatSource },
-              ].map(({ label, value, set, options, format }) => (
+                { label: 'Theme', value: theme, set: setTheme, options: THEMES.map((t) => ({ value: t, label: formatTheme(t) })) },
+                { label: 'Sentiment', value: sentiment, set: setSentiment, options: SENTIMENTS.map((t) => ({ value: t, label: formatSentiment(t) })) },
+                { label: 'Product area', value: productArea, set: setProductArea, options: productAreas.map((a) => ({ value: a.name, label: `${a.name} (${a.count})` })) },
+                { label: 'Any time', value: period, set: setPeriod, options: PERIODS, aria: 'Filter by period' },
+              ].map(({ label, value, set, options, aria }) => (
                 <select
                   key={label}
-                  aria-label={`Filter by ${label.toLowerCase()}`}
+                  aria-label={aria ?? `Filter by ${label.toLowerCase()}`}
                   value={value}
                   onChange={(e) => { set(e.target.value); setPage(1) }}
                   className={cn(inputClass, 'h-9 py-0 sm:w-auto', value && 'border-accent text-accent')}
                 >
                   <option value="">{label}</option>
-                  {options.map((option) => <option key={option} value={option}>{format(option)}</option>)}
+                  {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               ))}
             </div>
@@ -208,10 +232,7 @@ export default function FeedbackTable({ embedded = false, pageSize = 20, initial
                       <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-3">
                         {c && <ThemeBadge theme={c.theme} />}
                         {c?.secondaryThemes?.map((secondary) => <ThemeBadge key={secondary} theme={secondary} secondary />)}
-                        {c?.productArea && <span>{c.productArea}</span>}
-                        <span aria-hidden="true">·</span>
-                        <span>{formatSource(item.source)}</span>
-                        <span aria-hidden="true">·</span>
+                        {c?.productArea && <><span>{c.productArea}</span><span aria-hidden="true">·</span></>}
                         <span className="tabular">{timeAgo(item.submittedAt)}</span>
                         <span className="sm:hidden"><StatusBadge status={item.status} /></span>
                       </span>

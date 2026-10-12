@@ -173,9 +173,6 @@ export default function FeedbackSlideOver({ item, onClose, onReviewed }: Feedbac
                       <span className="tabular text-ink">{(confidence * 100).toFixed(0)}%</span>
                     </dd>
                   </dl>
-                  <p className="text-xs text-ink-3">
-                    {detail.classification.modelUsed} · {(detail.classification.promptTokens + detail.classification.completionTokens).toLocaleString()} tokens
-                  </p>
                 </div>
               )}
 

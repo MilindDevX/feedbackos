@@ -6,6 +6,7 @@ import { ArrowRight, RefreshCw } from 'lucide-react'
 import ThemeBreakdownChart from '@/components/dashboard/ThemeBreakdownChart'
 import SentimentTrendChart from '@/components/dashboard/SentimentTrendChart'
 import FeedbackTable from '@/components/feedback/FeedbackTable'
+import SentimentLegend, { SENTIMENT_ORDER } from '@/components/feedback/SentimentLegend'
 import { PageHeader, Panel, buttonClass } from '@/components/ui/primitives'
 import { cn, formatTheme } from '@/lib/utils'
 
@@ -27,8 +28,6 @@ interface TrendData {
   chartData: Array<Record<string, number | string>>
   themeTotals: Record<string, number>
 }
-
-const SENTIMENT_ORDER = ['POSITIVE', 'MIXED', 'NEUTRAL', 'NEGATIVE'] as const
 
 function SentimentSplit({ counts }: { counts: Record<string, number> }) {
   const total = SENTIMENT_ORDER.reduce((sum, key) => sum + (counts[key] || 0), 0)
@@ -66,7 +65,7 @@ export default function DashboardPage() {
 
   const stats = [
     { label: 'Feedback', value: summary?.total.toLocaleString() ?? '—', note: period },
-    { label: 'Negative', value: `${summary?.negativePercent ?? 0}%`, note: <SentimentSplit counts={summary?.bySentiment ?? {}} /> },
+    { label: 'Negative', value: `${summary?.negativePercent ?? 0}%`, note: <><SentimentSplit counts={summary?.bySentiment ?? {}} /><SentimentLegend counts={summary?.bySentiment ?? {}} className="mt-2" /></> },
     { label: 'Top theme', value: summary?.topTheme ? formatTheme(summary.topTheme) : '—', note: 'most mentioned' },
   ]
 
@@ -122,7 +121,10 @@ export default function DashboardPage() {
 
       <Panel className="mt-6 overflow-hidden">
         <div className="px-5 py-4 border-b border-line flex items-center justify-between">
-          <h2 className="font-display text-base font-semibold text-ink">Latest feedback</h2>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <h2 className="font-display text-base font-semibold text-ink">Latest feedback</h2>
+            <SentimentLegend className="hidden sm:flex" />
+          </div>
           <Link href="/feedback" className="text-sm text-accent hover:text-accent-hover inline-flex items-center gap-1">
             View all <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
           </Link>

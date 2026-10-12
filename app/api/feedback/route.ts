@@ -24,6 +24,7 @@ const listQuerySchema = z.object({
   productArea: z.string().optional(),
   dateFrom: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid dateFrom').optional(),
   dateTo: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid dateTo').optional(),
+  withinDays: z.coerce.number().int().min(1).max(365).optional(), // relative period, computed on the server clock
   search: z.string().max(200).optional(), // bounded to prevent large payloads
 })
 
@@ -39,7 +40,8 @@ export async function GET(req: NextRequest) {
   const parsed = listQuerySchema.safeParse(Object.fromEntries(url.searchParams))
   if (!parsed.success) return validationError(parsed.error.issues[0].message)
 
-  const { cursor, page, pageSize, status, theme, sentiment, source, productArea, dateFrom, dateTo, search } = parsed.data
+  const { cursor, page, pageSize, status, theme, sentiment, source, productArea, dateTo, withinDays, search } = parsed.data
+  const dateFrom = parsed.data.dateFrom ?? (withinDays ? new Date(Date.now() - withinDays * 86_400_000).toISOString() : undefined)
 
   const where: Prisma.FeedbackItemWhereInput = {
     organizationId: user.organizationId,
