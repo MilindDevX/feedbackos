@@ -59,7 +59,7 @@ Groq's free tier allows 30 requests a minute, 1,000 a day, 8,000 tokens a minute
 
 ## Public demo
 
-`/api/demo` creates, on first use, an *Acme Analytics (demo)* workspace with 36 pre-classified sample items, then signs the visitor in for two hours as a shared `VIEWER`. Seeding and date refreshes run under a Postgres advisory lock, so simultaneous first visitors are safe. Sample dates slide forward whenever the newest item is more than six hours old, so the dashboard always looks current. The entry point is rate-limited per IP; set `DEMO_ENABLED=0` to turn it off.
+`/api/demo` creates, on first use, an *Acme Analytics (demo)* workspace with 36 pre-classified sample items, then signs the visitor in for two hours as a shared `VIEWER`. Seeding and date refreshes run under a Postgres advisory lock, so simultaneous first visitors are safe. Sample dates slide forward whenever the newest item is more than six hours old, so the dashboard always looks current. The session cookie ends when the browser closes, and opening `/` with a leftover demo session goes to the sign-in page (with a *Continue the demo* option) rather than back into the demo. Signing in from there ends the demo session first, and the auth adapter refuses to link any account to the demo user: Auth.js otherwise links a new Google account to whoever is signed in. The entry point is rate-limited per IP; set `DEMO_ENABLED=0` to turn it off.
 
 ## Data model (main tables)
 

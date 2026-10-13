@@ -1,6 +1,6 @@
 'use client'
 
-import { signIn } from 'next-auth/react'
+import { signIn, signOut } from 'next-auth/react'
 import { useState } from 'react'
 import Link from 'next/link'
 import { Mail, ArrowRight, Loader2, Eye } from 'lucide-react'
@@ -8,7 +8,10 @@ import { Brand } from '@/components/ui/Brand'
 import { buttonClass, inputClass } from '@/components/ui/primitives'
 import { cn } from '@/lib/utils'
 
-export default function LoginForm({ initialError = '', demo = false }: { initialError?: string; demo?: boolean }) {
+export default function LoginForm({ initialError = '', demo = false, inDemo = false }: { initialError?: string; demo?: boolean; inDemo?: boolean }) {
+  // Leave the demo first: Auth.js would otherwise link a new Google account to the signed-in demo user.
+  const leaveDemo = async () => { if (inDemo) await signOut({ redirect: false }) }
+
   const [email, setEmail] = useState('')
   const [emailSent, setEmailSent] = useState(false)
   const [loading, setLoading] = useState<'google' | 'email' | null>(null)
@@ -17,6 +20,7 @@ export default function LoginForm({ initialError = '', demo = false }: { initial
   const handleGoogleSignIn = async () => {
     setLoading('google')
     setError('')
+    await leaveDemo()
     await signIn('google', { callbackUrl: '/dashboard' })
   }
 
@@ -26,6 +30,7 @@ export default function LoginForm({ initialError = '', demo = false }: { initial
     setLoading('email')
     setError('')
     try {
+      await leaveDemo()
       const result = await signIn('nodemailer', {
         email,
         redirect: false,
@@ -84,6 +89,14 @@ export default function LoginForm({ initialError = '', demo = false }: { initial
           <h2 className="font-display text-3xl font-semibold tracking-tight text-ink">Sign in</h2>
           <p className="mt-2 text-ink-2">New here? Signing in creates your workspace.</p>
 
+          {inDemo && (
+            <div role="status" className="mt-6 rounded-lg border border-line bg-accent-soft px-4 py-3 text-sm text-ink">
+              You are still in the demo.{' '}
+              <a href="/dashboard" className="font-medium text-accent hover:text-accent-hover underline underline-offset-2">Continue the demo</a>
+              {' '}or sign in below with your own account.
+            </div>
+          )}
+
           {emailSent ? (
             <div className="mt-8 rounded-xl border border-line bg-surface p-6" role="status">
               <Mail className="w-6 h-6 text-accent" aria-hidden="true" />
@@ -131,7 +144,7 @@ export default function LoginForm({ initialError = '', demo = false }: { initial
                 Continue with Google
               </button>
 
-              {demo && (
+              {demo && !inDemo && (
                 <a href="/api/demo" className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-line-strong px-4 py-3 text-sm text-ink-2 hover:text-ink hover:border-accent hover:bg-hover transition-colors">
                   <Eye className="w-4 h-4 text-accent" aria-hidden="true" />
                   Just looking? <span className="font-medium text-accent">Explore the demo</span> without signing up

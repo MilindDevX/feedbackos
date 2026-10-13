@@ -4,8 +4,9 @@ import { db } from '@/lib/db'
 import { invalidateDashboard } from '@/lib/dashboard-cache'
 import { DEMO_ITEMS } from './data'
 
-export const DEMO_SLUG = 'demo'
-export const DEMO_EMAIL = 'demo@feedbackos.demo'
+import { DEMO_EMAIL, DEMO_SLUG } from './constants'
+
+export { DEMO_EMAIL, DEMO_SLUG }
 const DAY_MS = 86_400_000
 const REFRESH_AFTER_MS = 6 * 3_600_000
 // Arbitrary constant for the Postgres advisory lock that serialises seeding and date refreshes.

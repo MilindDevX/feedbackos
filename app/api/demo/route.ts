@@ -13,5 +13,6 @@ export async function GET(request: NextRequest) {
   const limited = await rateLimit(request, 'demo-session', 20, 3600)
   if (limited) return limited
   const { userId } = await ensureDemoWorkspace()
-  return sessionRedirect(request, userId, 2, '/dashboard')
+  // Ends with the browser, so a later visit to the site starts signed out instead of inside the demo.
+  return sessionRedirect(request, userId, 2, '/dashboard', false)
 }

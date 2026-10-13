@@ -4,7 +4,8 @@ import { randomBytes } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-export async function sessionRedirect(request: NextRequest, userId: string, hours: number, destination: string): Promise<NextResponse> {
+// persistent=false sets a browser-session cookie: closing the browser ends it, the server-side expiry still applies.
+export async function sessionRedirect(request: NextRequest, userId: string, hours: number, destination: string, persistent = true): Promise<NextResponse> {
   const expires = new Date(Date.now() + hours * 3600_000)
   const sessionToken = randomBytes(32).toString('hex')
   await db.session.create({ data: { sessionToken, userId, expires } })
@@ -14,7 +15,7 @@ export async function sessionRedirect(request: NextRequest, userId: string, hour
   const secure = (forwardedProto ?? request.nextUrl.protocol.replace(':', '')) === 'https'
   const response = NextResponse.redirect(new URL(destination, request.url))
   response.cookies.set(secure ? '__Secure-authjs.session-token' : 'authjs.session-token', sessionToken, {
-    httpOnly: true, sameSite: 'lax', path: '/', secure, expires,
+    httpOnly: true, sameSite: 'lax', path: '/', secure, ...(persistent && { expires }),
   })
   return response
 }

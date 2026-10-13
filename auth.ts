@@ -1,14 +1,14 @@
 import NextAuth from 'next-auth'
-import { PrismaAdapter } from '@auth/prisma-adapter'
 import GoogleProvider from 'next-auth/providers/google'
 import EmailProvider from 'next-auth/providers/nodemailer'
 import { db } from '@/lib/db'
 import { magicLinkDelivery, senderAddress, signInEmail } from '@/lib/email-delivery'
 import { createTransport } from 'nodemailer'
 import { magicLinkEmailLimited } from '@/lib/abuse-limits'
+import { createAuthAdapter } from '@/lib/auth-adapter'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(db),
+  adapter: createAuthAdapter(db),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
