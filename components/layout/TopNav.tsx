@@ -26,6 +26,29 @@ function useDismiss(open: boolean, close: () => void, ref: React.RefObject<HTMLE
 function MobileNav({ user, onClose }: { user: SessionUser; onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null)
   useDismiss(true, onClose, panelRef)
+
+  // Modal drawer: move focus in, keep Tab inside it, and give focus back to the menu button on close.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    const panel = panelRef.current
+    const focusable = () => Array.from(panel?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [])
+    focusable()[0]?.focus()
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const items = focusable()
+      if (items.length === 0) return
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      opener?.focus()
+    }
+  }, [])
+
   return createPortal(
     <div className="lg:hidden fixed inset-0 z-50">
       <div className="absolute inset-0 bg-[oklch(18%_0.02_275/0.4)] fade-in" aria-hidden="true" />
