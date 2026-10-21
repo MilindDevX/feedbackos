@@ -105,6 +105,8 @@ export function renderMarkdown(r: GoldenReport): string {
   return [
     `# Golden-set classifier evaluation — ${r.split} split, ${r.date}`,
     '',
+    '> Real, human-labelled app reviews, but a keyword-stratified sample: every theme is represented, so obvious cases are over-represented compared with real traffic. These numbers show how the classifier compares across versions; they are not production accuracy.',
+    '',
     `Model: \`${r.model}\` · classifier fingerprint \`${r.promptVersion}\` · items scored: ${r.n} · unlabelled skipped: ${r.skippedUnlabelled}`,
     '',
     `- Macro-F1 (themes labelled or predicted): **${r.macroF1.toFixed(3)}**`,

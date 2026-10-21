@@ -61,6 +61,8 @@ test('the report counts invalid predictions and renders all six themes', async (
   expect(md).toContain('Invalid outputs: 1')
   // No labelled item had hidden praise, so the rate is not applicable rather than 0%.
   expect(md).toContain('Hidden-praise recall: n/a (no labelled items)')
+  expect(md).toMatch(/keyword-stratified sample/i)
+  expect(md).toMatch(/not production accuracy/i)
 })
 
 test('the locked test split needs an explicit flag', () => {
