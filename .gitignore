@@ -53,3 +53,4 @@ prisma/generated
 # agent metadata
 AGENTS.md
 CLAUDE.md
+.superpowers/
