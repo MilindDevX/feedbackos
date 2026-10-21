@@ -7,7 +7,7 @@ import { assertEvaluationSplitAllowed } from '../lib/ai/evaluation'
 import { buildSystemPrompt } from '../lib/ai/prompts'
 import { readJsonl, type GoldenItem } from '../lib/eval/golden'
 import { PRODUCT_AREAS, readLabels } from '../lib/eval/labels'
-import { buildReport, evaluateItems, renderMarkdown } from '../lib/eval/report'
+import { buildReport, evaluateItems, renderMarkdown, reportBasePath } from '../lib/eval/report'
 
 const option = (name: string) => process.argv.find((arg) => arg.startsWith(`--${name}=`))?.split('=')[1]
 
@@ -32,7 +32,7 @@ async function main() {
   const report = buildReport({ date, split, model, promptVersion }, run)
   const outDir = join(process.cwd(), 'evaluation', 'reports')
   mkdirSync(outDir, { recursive: true })
-  const base = join(outDir, `${date}-golden-${split}`)
+  const base = reportBasePath(outDir, date, split)
   writeFileSync(`${base}.json`, JSON.stringify({ report, timings: run.timings, pairs: run.pairs }, null, 2) + '\n')
   writeFileSync(`${base}.md`, renderMarkdown(report))
   console.log(`Scored ${report.n} (${report.skippedUnlabelled} unlabelled skipped, ${report.invalid} invalid). Macro-F1 ${report.macroF1.toFixed(3)}.`)

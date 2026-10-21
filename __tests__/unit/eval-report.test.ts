@@ -6,7 +6,10 @@ import type { ClassificationOutput } from '@/lib/ai/schemas'
 import { assertEvaluationSplitAllowed } from '@/lib/ai/evaluation'
 import type { GoldenItem } from '@/lib/eval/golden'
 import type { GoldenLabel } from '@/lib/eval/labels'
-import { buildReport, evaluateItems, renderMarkdown, toPrediction } from '@/lib/eval/report'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { buildReport, evaluateItems, renderMarkdown, reportBasePath, toPrediction } from '@/lib/eval/report'
 
 const output = (overrides: Partial<ClassificationOutput> = {}): ClassificationOutput => ({
   theme: 'bug_problem', secondary_themes: [], sentiment: 'negative', product_area: 'Other',
@@ -63,4 +66,15 @@ test('the report counts invalid predictions and renders all six themes', async (
 test('the locked test split needs an explicit flag', () => {
   expect(() => assertEvaluationSplitAllowed('test', false)).toThrow('locked')
   expect(() => assertEvaluationSplitAllowed('dev', false)).not.toThrow()
+})
+
+test('a second run on the same day gets a new report file instead of overwriting the first', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'reports-'))
+  const first = reportBasePath(dir, '2026-10-21', 'test')
+  expect(first).toBe(join(dir, '2026-10-21-golden-test'))
+  writeFileSync(`${first}.json`, '{}')
+  const second = reportBasePath(dir, '2026-10-21', 'test')
+  expect(second).toBe(join(dir, '2026-10-21-golden-test-2'))
+  writeFileSync(`${second}.json`, '{}')
+  expect(reportBasePath(dir, '2026-10-21', 'test')).toBe(join(dir, '2026-10-21-golden-test-3'))
 })

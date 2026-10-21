@@ -1,4 +1,6 @@
 // ABOUTME: Runs the classifier over labelled golden items and turns the results into a dated, readable report.
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { EVALUATION_CATEGORIES } from '@/lib/ai/evaluation'
 import type { ClassificationOutput } from '@/lib/ai/schemas'
 import { formatTheme } from '@/lib/utils'
@@ -122,4 +124,13 @@ export function renderMarkdown(r: GoldenReport): string {
     ...confusion,
     '',
   ].join('\n')
+}
+
+// Every run keeps its own file: a later run the same day gets -2, -3, … so no result can be silently replaced.
+export function reportBasePath(dir: string, date: string, split: 'dev' | 'test'): string {
+  const base = join(dir, `${date}-golden-${split}`)
+  if (!existsSync(`${base}.json`)) return base
+  let n = 2
+  while (existsSync(`${base}-${n}.json`)) n += 1
+  return `${base}-${n}`
 }
