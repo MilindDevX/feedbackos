@@ -5,7 +5,7 @@ import type { GoldenLabel } from './labels'
 
 export type Prediction = { theme: Theme6; secondary: Theme6[]; sentiment: string; routedToReview: boolean }
 export type Pair = { id: string; expected: GoldenLabel; predicted: Prediction | null }
-export type ThemeScore = { precision: number; recall: number; f1: number; support: number }
+export type ThemeScore = { precision: number; recall: number; f1: number; support: number; predicted: number }
 
 const ratio = (num: number, den: number) => (den === 0 ? 0 : num / den)
 
@@ -16,13 +16,14 @@ export function perThemeScores(pairs: Pair[]): Record<Theme6, ThemeScore> {
     const correct = pairs.filter((p) => p.expected.theme === theme && p.predicted?.theme === theme).length
     const precision = ratio(correct, predicted)
     const recall = ratio(correct, support)
-    return [theme, { precision, recall, f1: ratio(2 * precision * recall, precision + recall), support }]
+    return [theme, { precision, recall, f1: ratio(2 * precision * recall, precision + recall), support, predicted }]
   })) as Record<Theme6, ThemeScore>
 }
 
-// Standard macro average over the themes present in the labelled data.
+// Macro average over every theme a human used or the model predicted (as scikit-learn does); leaving out
+// predicted-only themes would hide those false positives and flatter the score.
 export function macroF1(scores: Record<Theme6, ThemeScore>): number {
-  const present = Object.values(scores).filter((s) => s.support > 0)
+  const present = Object.values(scores).filter((s) => s.support > 0 || s.predicted > 0)
   return ratio(present.reduce((sum, s) => sum + s.f1, 0), present.length)
 }
 

@@ -28,20 +28,20 @@ const pairs: Pair[] = [
 
 test('per-theme precision, recall and F1 match the hand count', () => {
   const s = perThemeScores(pairs)
-  expect(s.bug_problem).toEqual({ precision: 1, recall: 0.5, f1: 2 / 3, support: 2 })
+  expect(s.bug_problem).toEqual({ precision: 1, recall: 0.5, f1: 2 / 3, support: 2, predicted: 1 })
   expect(s.feature_request.precision).toBeCloseTo(2 / 3)
   expect(s.feature_request.recall).toBe(1)
   expect(s.feature_request.f1).toBeCloseTo(0.8)
-  expect(s.praise).toEqual({ precision: 1, recall: 1, f1: 1, support: 1 })
+  expect(s.praise).toEqual({ precision: 1, recall: 1, f1: 1, support: 1, predicted: 1 })
 })
 
 test('a theme never predicted scores precision 0, not NaN, and a failed prediction lowers recall', () => {
   const s = perThemeScores(pairs)
-  expect(s.usability_issue).toEqual({ precision: 0, recall: 0, f1: 0, support: 1 })
-  expect(s.question_support).toEqual({ precision: 0, recall: 0, f1: 0, support: 0 })
+  expect(s.usability_issue).toEqual({ precision: 0, recall: 0, f1: 0, support: 1, predicted: 0 })
+  expect(s.question_support).toEqual({ precision: 0, recall: 0, f1: 0, support: 0, predicted: 0 })
 })
 
-test('macro-F1 averages only themes that appear in the expected labels', () => {
+test('macro-F1 averages the themes that were labelled or predicted', () => {
   expect(macroF1(perThemeScores(pairs))).toBeCloseTo((2 / 3 + 0.8 + 1 + 0) / 4)
 })
 
@@ -62,4 +62,12 @@ test('hidden-praise recall is 1 of 2', () => {
 
 test('review routing is 1 of 5 valid predictions', () => {
   expect(reviewRoutingRate(pairs)).toBeCloseTo(1 / 5)
+})
+
+test('macro-F1 also counts a theme the model predicted that no human used', () => {
+  const extra: Pair[] = [...pairs, { id: '7', expected: expected('bug_problem', 'negative'), predicted: predicted('other', 'negative') }]
+  const s = perThemeScores(extra)
+  expect(s.other.support).toBe(0)
+  // bug 1/3 recall → f1 0.5; feature 0.8; praise 1; usability 0; other 0 (predicted, never labelled)
+  expect(macroF1(s)).toBeCloseTo((0.5 + 0.8 + 1 + 0 + 0) / 5)
 })

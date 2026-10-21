@@ -106,7 +106,7 @@ export function renderMarkdown(r: GoldenReport): string {
     '',
     `Model: \`${r.model}\` · prompt version \`${r.promptVersion}\` · items scored: ${r.n} · unlabelled skipped: ${r.skippedUnlabelled}`,
     '',
-    `- Macro-F1 (themes present): **${r.macroF1.toFixed(3)}**`,
+    `- Macro-F1 (themes labelled or predicted): **${r.macroF1.toFixed(3)}**`,
     `- Sentiment accuracy: **${pct(r.sentimentAccuracy)}**`,
     `- Hidden-praise recall: ${r.praiseItems ? `${pct(r.secondaryPraiseRecall)} of ${r.praiseItems}` : 'n/a (no labelled items)'}`,
     `- Sent to human review: ${pct(r.reviewRoutingRate)}`,
