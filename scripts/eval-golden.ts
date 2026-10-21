@@ -1,13 +1,13 @@
 // ABOUTME: Measures the classifier on the human-labelled golden set and writes a dated JSON + Markdown report.
 // Usage: node --env-file=.env --import tsx scripts/eval-golden.ts --split=dev [--delay-ms=9000] [--allow-locked-test]
-import { createHash } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { assertEvaluationSplitAllowed } from '../lib/ai/evaluation'
-import { buildSystemPrompt } from '../lib/ai/prompts'
+import { buildSystemPrompt, buildUserPrompt } from '../lib/ai/prompts'
+import { REVIEW_CONFIDENCE_THRESHOLD, classificationJsonSchema } from '../lib/ai/schemas'
 import { readJsonl, type GoldenItem } from '../lib/eval/golden'
 import { PRODUCT_AREAS, readLabels } from '../lib/eval/labels'
-import { buildReport, evaluateItems, renderMarkdown, reportBasePath } from '../lib/eval/report'
+import { buildReport, classifierFingerprint, evaluateItems, renderMarkdown, reportBasePath } from '../lib/eval/report'
 
 const option = (name: string) => process.argv.find((arg) => arg.startsWith(`--${name}=`))?.split('=')[1]
 
@@ -28,7 +28,13 @@ async function main() {
   }, delayMs)
 
   const date = new Date().toISOString().slice(0, 10)
-  const promptVersion = createHash('sha256').update(buildSystemPrompt()).digest('hex').slice(0, 12)
+  const promptVersion = classifierFingerprint({
+    systemPrompt: buildSystemPrompt(),
+    userPromptTemplate: buildUserPrompt('{{TEXT}}', [...PRODUCT_AREAS]),
+    schema: JSON.stringify(classificationJsonSchema),
+    model,
+    reviewThreshold: REVIEW_CONFIDENCE_THRESHOLD,
+  })
   const report = buildReport({ date, split, model, promptVersion }, run)
   const outDir = join(process.cwd(), 'evaluation', 'reports')
   mkdirSync(outDir, { recursive: true })

@@ -16,6 +16,9 @@ export const ClassificationOutputSchema = z.object({
 
 export type ClassificationOutput = z.infer<typeof ClassificationOutputSchema>
 
+// Results below this confidence (or flagged by the model) go to human review.
+export const REVIEW_CONFIDENCE_THRESHOLD = 0.6
+
 // ─── JSON Schema for OpenAI structured outputs ────────────────────────────────
 export const classificationJsonSchema = {
   name: 'feedback_classification',

@@ -9,7 +9,7 @@ import type { GoldenLabel } from '@/lib/eval/labels'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { buildReport, evaluateItems, renderMarkdown, reportBasePath, toPrediction } from '@/lib/eval/report'
+import { buildReport, classifierFingerprint, evaluateItems, renderMarkdown, reportBasePath, toPrediction } from '@/lib/eval/report'
 
 const output = (overrides: Partial<ClassificationOutput> = {}): ClassificationOutput => ({
   theme: 'bug_problem', secondary_themes: [], sentiment: 'negative', product_area: 'Other',
@@ -77,4 +77,14 @@ test('a second run on the same day gets a new report file instead of overwriting
   expect(second).toBe(join(dir, '2026-10-21-golden-test-2'))
   writeFileSync(`${second}.json`, '{}')
   expect(reportBasePath(dir, '2026-10-21', 'test')).toBe(join(dir, '2026-10-21-golden-test-3'))
+})
+
+test('the classifier fingerprint changes when any behaviour-relevant part changes', () => {
+  const base = { systemPrompt: 'sys', userPromptTemplate: 'user {{TEXT}}', schema: '{}', model: 'm', reviewThreshold: 0.6 }
+  const fp = classifierFingerprint(base)
+  expect(fp).toMatch(/^[0-9a-f]{12}$/)
+  expect(classifierFingerprint({ ...base })).toBe(fp)
+  for (const change of [{ systemPrompt: 'sys2' }, { userPromptTemplate: 'u2' }, { schema: '{"a":1}' }, { model: 'm2' }, { reviewThreshold: 0.7 }]) {
+    expect(classifierFingerprint({ ...base, ...change })).not.toBe(fp)
+  }
 })

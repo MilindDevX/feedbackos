@@ -1,8 +1,9 @@
 // ABOUTME: Runs the classifier over labelled golden items and turns the results into a dated, readable report.
+import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { EVALUATION_CATEGORIES } from '@/lib/ai/evaluation'
-import type { ClassificationOutput } from '@/lib/ai/schemas'
+import { REVIEW_CONFIDENCE_THRESHOLD, type ClassificationOutput } from '@/lib/ai/schemas'
 import { formatTheme } from '@/lib/utils'
 import type { GoldenItem, Theme6 } from './golden'
 import type { GoldenLabel } from './labels'
@@ -22,7 +23,7 @@ export function toPrediction(output: ClassificationOutput): Prediction {
     theme: output.theme as Theme6,
     secondary: (output.secondary_themes ?? []).filter((t) => t !== output.theme) as Theme6[],
     sentiment: output.sentiment,
-    routedToReview: output.requires_human_review || output.confidence < 0.6,
+    routedToReview: output.requires_human_review || output.confidence < REVIEW_CONFIDENCE_THRESHOLD,
   }
 }
 
@@ -104,7 +105,7 @@ export function renderMarkdown(r: GoldenReport): string {
   return [
     `# Golden-set classifier evaluation — ${r.split} split, ${r.date}`,
     '',
-    `Model: \`${r.model}\` · prompt version \`${r.promptVersion}\` · items scored: ${r.n} · unlabelled skipped: ${r.skippedUnlabelled}`,
+    `Model: \`${r.model}\` · classifier fingerprint \`${r.promptVersion}\` · items scored: ${r.n} · unlabelled skipped: ${r.skippedUnlabelled}`,
     '',
     `- Macro-F1 (themes labelled or predicted): **${r.macroF1.toFixed(3)}**`,
     `- Sentiment accuracy: **${pct(r.sentimentAccuracy)}**`,
@@ -133,4 +134,12 @@ export function reportBasePath(dir: string, date: string, split: 'dev' | 'test')
   let n = 2
   while (existsSync(`${base}-${n}.json`)) n += 1
   return `${base}-${n}`
+}
+
+export type ClassifierParts = { systemPrompt: string; userPromptTemplate: string; schema: string; model: string; reviewThreshold: number }
+
+// Identifies exactly what produced a run: any change to the prompts, output schema, model or review threshold
+// changes the fingerprint, so a "frozen" locked-test run is provably frozen.
+export function classifierFingerprint(parts: ClassifierParts): string {
+  return createHash('sha256').update(JSON.stringify(parts)).digest('hex').slice(0, 12)
 }

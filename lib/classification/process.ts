@@ -1,6 +1,6 @@
 import { classifyFeedback, type ClassificationResult } from '@/lib/ai/classify'
 import { db } from '@/lib/db'
-import { secondaryThemeEnums, sentimentToEnum, themeToEnum } from '@/lib/ai/schemas'
+import { REVIEW_CONFIDENCE_THRESHOLD, secondaryThemeEnums, sentimentToEnum, themeToEnum } from '@/lib/ai/schemas'
 import type { Sentiment, Theme } from '@prisma/client'
 import { CLASSIFICATION_LEASE_SECONDS, delayProviderUntil, findRecoverableClassifications, refundUnusedReservation, reserveClassification } from './dispatch'
 import { publishClassification } from './publish'
@@ -119,7 +119,7 @@ export async function persistClassificationIfCurrent(
   result: ClassificationResult
 ): Promise<boolean> {
   const { output, modelUsed, promptTokens, completionTokens, latencyMs } = result
-  const needsReview = output.requires_human_review || output.confidence < 0.6
+  const needsReview = output.requires_human_review || output.confidence < REVIEW_CONFIDENCE_THRESHOLD
 
   return db.$transaction(async (tx) => {
     const claim = await tx.feedbackItem.updateMany({
