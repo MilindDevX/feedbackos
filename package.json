@@ -20,7 +20,9 @@
     "db:generate": "prisma generate",
     "db:seed": "dotenv -e .env -- tsx prisma/seed.ts",
     "deploy:build": "prisma generate && prisma migrate deploy && next build",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "eval:golden": "node --import tsx scripts/eval-golden.ts",
+    "golden:build": "node --import tsx scripts/golden/build.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
