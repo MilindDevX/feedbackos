@@ -10,10 +10,14 @@ const EMAIL = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g
 const URL = /\bhttps?:\/\/\S+|\bwww\.\S+/gi
 const HANDLE = /(^|\s)@\w+/g
 
-// Removes contact details, collapses whitespace, and drops text too short or not mostly English to label.
+// Self-introductions, sign-offs and trailing signatures ("- John", "Sincerely, Maria") reveal who wrote a review.
+const SELF_IDENTIFYING = /\b(my (first |last |full )?name|sincerely|regards|signed by)\b/i
+const TRAILING_SIGNATURE = /(^|[.!?]\s*)[-–—]\s*[A-Z][a-z]+(\s[A-Z][a-z]*\.?)?\s*$/
+
+// Removes contact details, collapses whitespace, and drops text too short, not mostly English, or self-identifying.
 export function cleanReviewText(raw: string): string | null {
   const text = raw.replace(EMAIL, ' ').replace(URL, ' ').replace(HANDLE, ' ').replace(/\s+/g, ' ').trim()
-  if (text.length < 15) return null
+  if (text.length < 15 || SELF_IDENTIFYING.test(text) || TRAILING_SIGNATURE.test(text)) return null
   const letters = text.match(/\p{L}/gu) ?? []
   const ascii = letters.filter((ch) => /[A-Za-z]/.test(ch)).length
   return letters.length > 0 && ascii / letters.length >= 0.8 ? text : null

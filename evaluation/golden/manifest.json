@@ -3,18 +3,18 @@
   "licence": "CC BY 4.0",
   "md5": "6a2237fc3eeed4990805285985e7f288",
   "seed": 20261021,
-  "builtAt": "2026-10-21T09:09:29.983Z",
+  "builtAt": "2026-10-21T09:14:15.170Z",
   "poolSizes": [
     {
       "file": "2024-12-20T19-55-42.075Z_en_explanation_reviews_cleaned.csv",
-      "usableReviews": 126946
+      "usableReviews": 126049
     },
     {
       "file": "2024-12-20T19-55-42.075Z_en_no_explanation_needs_reviews_cleaned.csv",
-      "usableReviews": 85817
+      "usableReviews": 85630
     }
   ],
-  "afterDedupe": 124871,
+  "afterDedupe": 124549,
   "total": 200,
   "splits": {
     "dev": 50,
@@ -24,8 +24,8 @@
     "bug_problem": 20,
     "feature_request": 20,
     "usability_issue": 20,
-    "question_support": 20,
-    "praise": 41,
-    "other": 79
+    "question_support": 25,
+    "praise": 37,
+    "other": 78
   }
 }

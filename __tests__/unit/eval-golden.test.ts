@@ -17,6 +17,13 @@ test('cleanReviewText rejects short or non-English text', () => {
   expect(cleanReviewText('これはとても良いアプリです本当にありがとう')).toBeNull()
 })
 
+test('cleanReviewText drops reviews that identify their author', () => {
+  expect(cleanReviewText('Support never answered. PLEASE NOTE the "W" in my name is part of my first name. "Dale W"')).toBeNull()
+  expect(cleanReviewText('Great app, thanks for all the work on it! - John')).toBeNull()
+  expect(cleanReviewText('Fix the login loop please. Sincerely, Maria Lopez')).toBeNull()
+  expect(cleanReviewText('Great app, thanks for all the work on it!')).not.toBeNull()
+})
+
 test('dedupe drops reviews that differ only in case and spacing', () => {
   expect(dedupe([{ id: '1', text: 'Great app!' }, { id: '2', text: '  great   APP! ' }, { id: '3', text: 'Crashes on login' }]).map((x) => x.id))
     .toEqual(['1', '3'])
