@@ -78,6 +78,20 @@ describe('/api/eval/labels', () => {
     expect((await POST(req('POST', label('zzz')))).status).toBe(404)
   })
 
+  it('refuses label writes forged by another website open in the same browser', async () => {
+    workspace()
+    const crossSite = new NextRequest('http://localhost:3000/api/eval/labels', {
+      method: 'POST', body: JSON.stringify(label('a')), headers: { 'Content-Type': 'text/plain', 'Sec-Fetch-Site': 'cross-site' },
+    })
+    const plainText = new NextRequest('http://localhost:3000/api/eval/labels', {
+      method: 'POST', body: JSON.stringify(label('a')), headers: { 'Content-Type': 'text/plain' },
+    })
+    expect((await POST(crossSite)).status).toBe(403)
+    expect((await POST(plainText)).status).toBe(403)
+    const after = await (await GET(req())).json()
+    expect(after.done).toBe(0)
+  })
+
   it('does not exist outside local test mode', async () => {
     workspace()
     jest.mocked(localTestMode).mockReturnValue(false)

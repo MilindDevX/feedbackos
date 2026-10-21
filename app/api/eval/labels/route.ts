@@ -28,8 +28,16 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ item: next ? { id: next.id, text: next.text } : null, done, total: items.length })
 }
 
+// A website open in the same browser can POST to localhost without a CORS preflight (text/plain body). Requiring a
+// JSON content type forces a preflight, and Sec-Fetch-Site rejects cross-site requests outright.
+function sameOriginJson(request: NextRequest): boolean {
+  const site = request.headers.get('sec-fetch-site')
+  return (request.headers.get('content-type') ?? '').startsWith('application/json') && (!site || site === 'same-origin')
+}
+
 export async function POST(request: NextRequest) {
   if (!allowed(request)) return notFound()
+  if (!sameOriginJson(request)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { items, labelsPath } = load()
   let label
   try {
