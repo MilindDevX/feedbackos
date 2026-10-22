@@ -3,13 +3,13 @@
  * (never dropped), and a theme the model never predicts gets precision 0 rather than NaN.
  */
 import type { Theme6 } from '@/lib/eval/golden'
-import type { GoldenLabel } from '@/lib/eval/labels'
+import type { GoldenLabel, SureLabel } from '@/lib/eval/labels'
 import {
   confusionMatrix, macroF1, perThemeScores, reviewRoutingRate, secondaryPraiseRecall, sentimentAccuracy, type Pair,
 } from '@/lib/eval/metrics'
 
-const expected = (theme: Theme6, sentiment: GoldenLabel['sentiment'], secondary: Theme6[] = []): GoldenLabel =>
-  ({ id: 'x', theme, secondary, sentiment, productArea: 'Other', labelledAt: '2026-10-21T00:00:00.000Z' })
+const expected = (theme: Theme6, sentiment: NonNullable<GoldenLabel['sentiment']>, secondary: Theme6[] = []): SureLabel =>
+  ({ id: 'x', theme, secondary, sentiment, unsure: false, labelledAt: '2026-10-21T00:00:00.000Z' })
 const predicted = (theme: Theme6, sentiment: string, secondary: Theme6[] = [], routedToReview = false) =>
   ({ theme, secondary, sentiment, routedToReview })
 

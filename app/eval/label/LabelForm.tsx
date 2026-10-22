@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { EVALUATION_CATEGORIES } from '@/lib/ai/evaluation'
-import { buttonClass, inputClass } from '@/components/ui/primitives'
+import { buttonClass } from '@/components/ui/primitives'
 import { cn, formatTheme } from '@/lib/utils'
 
 type Theme = (typeof EVALUATION_CATEGORIES)[number]
@@ -10,7 +10,6 @@ type Item = { id: string; text: string }
 const SENTIMENTS = [
   { value: 'positive', key: 'p' }, { value: 'negative', key: 'n' }, { value: 'neutral', key: 'u' }, { value: 'mixed', key: 'm' },
 ] as const
-const AREAS = ['Dashboard', 'Authentication', 'API', 'Billing', 'Onboarding', 'Integrations', 'Other']
 
 export default function LabelForm() {
   const [item, setItem] = useState<Item | null>(null)
@@ -18,7 +17,6 @@ export default function LabelForm() {
   const [theme, setTheme] = useState<Theme | null>(null)
   const [secondary, setSecondary] = useState<Theme[]>([])
   const [sentiment, setSentiment] = useState<string | null>(null)
-  const [area, setArea] = useState('Other')
   const [previous, setPrevious] = useState<Item | null>(null)
   const [message, setMessage] = useState('')
   const [tick, setTick] = useState(0)
@@ -33,23 +31,24 @@ export default function LabelForm() {
     return () => { cancelled = true }
   }, [tick])
 
-  const reset = () => { setTheme(null); setSecondary([]); setSentiment(null); setArea('Other') }
+  const reset = () => { setTheme(null); setSecondary([]); setSentiment(null) }
   const toggleSecondary = useCallback((t: Theme) => {
     setSecondary((s) => s.includes(t) ? s.filter((x) => x !== t) : s.length < 2 ? [...s, t] : s)
   }, [])
 
-  const save = useCallback(async () => {
-    if (!item || !theme || !sentiment) { setMessage('Choose a theme and a sentiment first.'); return }
+  const save = useCallback(async (unsure = false) => {
+    if (!item) return
+    if (!unsure && (!theme || !sentiment)) { setMessage('Choose a theme and a sentiment, or press ? if you are unsure.'); return }
     const res = await fetch('/api/eval/labels', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: item.id, theme, secondary: secondary.filter((t) => t !== theme), sentiment, productArea: area, labelledAt: new Date().toISOString() }),
+      body: JSON.stringify({ id: item.id, theme, secondary: secondary.filter((t) => t !== theme), sentiment, unsure, labelledAt: new Date().toISOString() }),
     })
     if (!res.ok) { setMessage('Could not save this label.'); return }
     setPrevious(item)
     setMessage('')
     reset()
     setTick((t) => t + 1)
-  }, [item, theme, secondary, sentiment, area])
+  }, [item, theme, secondary, sentiment])
 
   // Undo shows the last item again; saving it appends a newer label that replaces the old one.
   const undo = () => { if (previous) { setItem(previous); setPrevious(null); reset() } }
@@ -66,6 +65,7 @@ export default function LabelForm() {
       }
       const s = SENTIMENTS.find((x) => x.key === e.key.toLowerCase())
       if (s && !e.metaKey && !e.ctrlKey) { setSentiment(s.value); return }
+      if (e.key === '?') { e.preventDefault(); save(true); return }
       if (e.key === 'Enter') { e.preventDefault(); save() }
     }
     window.addEventListener('keydown', onKey)
@@ -79,6 +79,17 @@ export default function LabelForm() {
         <p className="tabular text-sm text-ink-3" aria-live="polite">{progress.done} / {progress.total} labelled</p>
       </div>
       <p className="mt-1 text-sm text-ink-3">Read the review and choose what it is about. The model&rsquo;s answer is hidden on purpose.</p>
+
+      <details open className="mt-5 rounded-lg border border-line bg-sunken px-4 py-3 text-sm text-ink-2">
+        <summary className="cursor-pointer font-medium text-ink">Decision rules (the same ones the classifier follows)</summary>
+        <ul className="mt-2 space-y-1.5 list-disc pl-5">
+          <li><strong className="text-ink">Main theme = the most actionable part:</strong> problem &gt; request &gt; question &gt; praise.</li>
+          <li><strong className="text-ink">Bug:</strong> something broken, crashing or wrong. <strong className="text-ink">Usability:</strong> works, but confusing, slow, too many ads or annoying. <strong className="text-ink">Feature request:</strong> &ldquo;please add / change&rdquo;. <strong className="text-ink">Question:</strong> &ldquo;how do I&hellip;?&rdquo;. <strong className="text-ink">Praise:</strong> only happy. <strong className="text-ink">Other:</strong> bans, policy, politics, off-topic.</li>
+          <li><strong className="text-ink">&ldquo;Good, but could improve X&rdquo;:</strong> main theme = X, add <em>+ Praise</em>, sentiment <em>Mixed</em>.</li>
+          <li><strong className="text-ink">Sentiment:</strong> Mixed = any praise plus any complaint or request. Neutral = a passing comment or question with no clear feeling. Otherwise Positive or Negative.</li>
+          <li><strong className="text-ink">Genuinely ambiguous?</strong> Press <kbd>?</kbd> (Unsure). It is kept but left out of the scores.</li>
+        </ul>
+      </details>
 
       {!item ? (
         <p className="mt-10 text-ink">{progress.total ? 'All items are labelled. Thank you!' : 'Loading…'}</p>
@@ -122,16 +133,10 @@ export default function LabelForm() {
             </div>
           </fieldset>
 
-          <label className="block text-sm font-medium text-ink">
-            Product area
-            <select value={area} onChange={(e) => setArea(e.target.value)} className={cn(inputClass, 'mt-2')}>
-              {AREAS.map((a) => <option key={a}>{a}</option>)}
-            </select>
-          </label>
-
           {message && <p role="alert" className="text-sm text-danger">{message}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={save} className={buttonClass('primary')}>Save (Enter)</button>
+            <button type="button" onClick={() => save()} className={buttonClass('primary')}>Save (Enter)</button>
+            <button type="button" onClick={() => save(true)} className={buttonClass('secondary')}>Unsure (?)</button>
             <button type="button" onClick={undo} disabled={!previous} className={buttonClass('ghost')}>Undo last</button>
           </div>
         </div>

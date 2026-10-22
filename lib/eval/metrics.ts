@@ -1,10 +1,10 @@
 // ABOUTME: Golden-set metrics. A failed prediction counts as wrong (never dropped) so recall is not inflated.
 import { EVALUATION_CATEGORIES } from '@/lib/ai/evaluation'
 import type { Theme6 } from './golden'
-import type { GoldenLabel } from './labels'
+import type { SureLabel } from './labels'
 
 export type Prediction = { theme: Theme6; secondary: Theme6[]; sentiment: string; routedToReview: boolean }
-export type Pair = { id: string; expected: GoldenLabel; predicted: Prediction | null }
+export type Pair = { id: string; expected: SureLabel; predicted: Prediction | null }
 export type ThemeScore = { precision: number; recall: number; f1: number; support: number; predicted: number }
 
 const ratio = (num: number, den: number) => (den === 0 ? 0 : num / den)

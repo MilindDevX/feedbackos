@@ -6,7 +6,7 @@ import { EVALUATION_CATEGORIES } from '@/lib/ai/evaluation'
 import { REVIEW_CONFIDENCE_THRESHOLD, type ClassificationOutput } from '@/lib/ai/schemas'
 import { formatTheme } from '@/lib/utils'
 import type { GoldenItem, Theme6 } from './golden'
-import type { GoldenLabel } from './labels'
+import { isSure, type GoldenLabel, type SureLabel } from './labels'
 import {
   confusionMatrix, macroF1, perThemeScores, reviewRoutingRate, secondaryPraiseRecall, sentimentAccuracy,
   type Pair, type Prediction, type ThemeScore,
@@ -14,7 +14,7 @@ import {
 
 export type Classify = (id: string, text: string) => Promise<{ output: ClassificationOutput; promptTokens: number; completionTokens: number; latencyMs: number }>
 export type RunTiming = { id: string; latencyMs: number; promptTokens: number; completionTokens: number; error?: string }
-export type GoldenRun = { pairs: Pair[]; timings: RunTiming[]; skippedUnlabelled: number }
+export type GoldenRun = { pairs: Pair[]; timings: RunTiming[]; skippedUnlabelled: number; unsureExcluded: number }
 export type ReportMeta = { date: string; split: 'dev' | 'test'; model: string; promptVersion: string }
 
 // Mirrors production routing: a result goes to human review when flagged or below 0.6 confidence.
@@ -32,28 +32,31 @@ export async function evaluateItems(
 ): Promise<GoldenRun> {
   const inSplit = items.filter((item) => item.split === split)
   const labelled = inSplit.filter((item) => labels.has(item.id))
+  // Unsure reviews have no trustworthy answer to score against, so they are counted and skipped (no model call).
+  const scored = labelled.filter((item) => isSure(labels.get(item.id)!))
   const pairs: Pair[] = []
   const timings: RunTiming[] = []
-  for (const [index, item] of labelled.entries()) {
+  for (const [index, item] of scored.entries()) {
     if (index > 0 && delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs))
     const started = Date.now()
     try {
       const result = await classify(item.id, item.text)
-      pairs.push({ id: item.id, expected: labels.get(item.id)!, predicted: toPrediction(result.output) })
+      pairs.push({ id: item.id, expected: labels.get(item.id) as SureLabel, predicted: toPrediction(result.output) })
       timings.push({ id: item.id, latencyMs: result.latencyMs, promptTokens: result.promptTokens, completionTokens: result.completionTokens })
     } catch (error) {
       // A failed call is a wrong answer, not a missing one: dropping it would inflate recall.
-      pairs.push({ id: item.id, expected: labels.get(item.id)!, predicted: null })
+      pairs.push({ id: item.id, expected: labels.get(item.id) as SureLabel, predicted: null })
       timings.push({ id: item.id, latencyMs: Date.now() - started, promptTokens: 0, completionTokens: 0, error: error instanceof Error ? error.message : String(error) })
     }
   }
-  return { pairs, timings, skippedUnlabelled: inSplit.length - labelled.length }
+  return { pairs, timings, skippedUnlabelled: inSplit.length - labelled.length, unsureExcluded: labelled.length - scored.length }
 }
 
 export type GoldenReport = ReportMeta & {
   n: number
   invalid: number
   skippedUnlabelled: number
+  unsureExcluded: number
   perTheme: Record<Theme6, ThemeScore>
   macroF1: number
   sentimentAccuracy: number
@@ -76,6 +79,7 @@ export function buildReport(meta: ReportMeta, run: GoldenRun): GoldenReport {
     n: run.pairs.length,
     invalid: run.pairs.filter((p) => !p.predicted).length,
     skippedUnlabelled: run.skippedUnlabelled,
+    unsureExcluded: run.unsureExcluded,
     perTheme,
     macroF1: macroF1(perTheme),
     sentimentAccuracy: sentimentAccuracy(run.pairs),
@@ -107,7 +111,7 @@ export function renderMarkdown(r: GoldenReport): string {
     '',
     '> Real, human-labelled app reviews, but a keyword-stratified sample: every theme is represented, so obvious cases are over-represented compared with real traffic. These numbers show how the classifier compares across versions; they are not production accuracy.',
     '',
-    `Model: \`${r.model}\` · classifier fingerprint \`${r.promptVersion}\` · items scored: ${r.n} · unlabelled skipped: ${r.skippedUnlabelled}`,
+    `Model: \`${r.model}\` · classifier fingerprint \`${r.promptVersion}\` · items scored: ${r.n} · marked unsure (excluded): ${r.unsureExcluded} · unlabelled skipped: ${r.skippedUnlabelled}`,
     '',
     `- Macro-F1 (themes labelled or predicted): **${r.macroF1.toFixed(3)}**`,
     `- Sentiment accuracy: **${pct(r.sentimentAccuracy)}**`,

@@ -4,7 +4,7 @@
  */
 jest.mock('@/lib/local-test-mode', () => ({ localTestMode: jest.fn(() => true), isLocalHost: jest.fn(() => true) }))
 
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { NextRequest } from 'next/server'
@@ -14,7 +14,7 @@ import { appendLabel, nextUnlabelled, parseLabel, readLabels, type GoldenLabel }
 import { GET, POST } from '@/app/api/eval/labels/route'
 
 const label = (id: string, overrides: Partial<GoldenLabel> = {}): GoldenLabel => ({
-  id, theme: 'bug_problem', secondary: [], sentiment: 'negative', productArea: 'Other', labelledAt: '2026-10-21T10:00:00.000Z', ...overrides,
+  id, theme: 'bug_problem', secondary: [], sentiment: 'negative', unsure: false, labelledAt: '2026-10-21T10:00:00.000Z', ...overrides,
 })
 const items: GoldenItem[] = [
   { id: 'a', text: 'Crashes on login, "every" time, sadly.', split: 'dev', hint: 'bug_problem' },
@@ -39,7 +39,27 @@ describe('parseLabel', () => {
   })
 })
 
+describe('unsure labels', () => {
+  it('lets an ambiguous review be marked unsure without a theme or sentiment', () => {
+    expect(parseLabel(label('a', { unsure: true, theme: null, sentiment: null })).unsure).toBe(true)
+  })
+  it('still requires a theme and sentiment when the reviewer is sure', () => {
+    expect(() => parseLabel(label('a', { theme: null }))).toThrow()
+    expect(() => parseLabel(label('a', { sentiment: null }))).toThrow()
+  })
+})
+
 describe('label storage', () => {
+  it('reads and upgrades labels saved in the earlier format (with product area, without unsure)', () => {
+    const dir = workspace()
+    const path = join(dir, 'labels.csv')
+    writeFileSync(path, 'id,theme,secondary,sentiment,productArea,labelledAt\n"a","praise","usability_issue;bug_problem","mixed","Other","2026-10-21T09:55:55.298Z"\n')
+    appendLabel(path, label('b', { unsure: true, theme: null, sentiment: null }))
+    const labels = readLabels(path)
+    expect(labels.get('a')).toMatchObject({ theme: 'praise', secondary: ['usability_issue', 'bug_problem'], sentiment: 'mixed', unsure: false })
+    expect(labels.get('b')).toMatchObject({ unsure: true, theme: null, sentiment: null })
+  })
+
   it('keeps the latest label per item and resumes at the first unlabelled one', () => {
     const dir = workspace()
     const path = join(dir, 'labels.csv')

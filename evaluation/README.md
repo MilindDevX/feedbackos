@@ -118,7 +118,7 @@ Run: `node --env-file=.env --import tsx scripts/evaluate-classification.ts --dat
 The golden set is about 200 real, openly licensed app reviews (source and licence in `golden/SOURCE.md`), labelled blind by Milind: the labelling page never shows the model's answer. It is split once, with seed `20261021`, into 50 **dev** items (prompt tuning allowed) and 150 locked **test** items (measured only, never tuned against).
 
 1. Build the set: `pnpm golden:build` writes `golden/items.jsonl` and `golden/manifest.json`.
-2. Label: run `next dev` with `LOCAL_TEST_MODE=1` and open `http://localhost:3000/eval/label` (keys 1–6 theme, Shift+1–6 "also mentions", P/N/U/M sentiment, Enter to save). Labels append to `golden/labels.csv`; it resumes where you stopped.
+2. Label: run `next dev` with `LOCAL_TEST_MODE=1` and open `http://localhost:3000/eval/label` (keys 1–6 theme, Shift+1–6 "also mentions", P/N/U/M sentiment, Enter to save, ? for unsure). The page shows the same decision rules the classifier follows. Product area is not labelled: these are consumer-app reviews and product area is not scored. Reviews marked unsure are kept but excluded from the scores, and each report states how many. Labels append to `golden/labels.csv`; it resumes where you stopped.
 3. Measure: `node --env-file=.env --import tsx scripts/eval-golden.ts --split=dev --delay-ms=9000`. The locked split also needs `--allow-locked-test`.
 
 Each run writes `reports/<date>-golden-<split>.json` (every prediction and timing) and `.md` (per-theme precision, recall and F1, confusion matrix, sentiment accuracy, hidden-praise recall, review routing, latency and tokens). Failed model calls count as wrong answers, never dropped. Quote numbers only from these reports.

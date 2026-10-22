@@ -15,8 +15,8 @@ const output = (overrides: Partial<ClassificationOutput> = {}): ClassificationOu
   theme: 'bug_problem', secondary_themes: [], sentiment: 'negative', product_area: 'Other',
   confidence: 0.9, summary: 's', requires_human_review: false, ...overrides,
 })
-const label = (id: string, theme: GoldenLabel['theme']): GoldenLabel =>
-  ({ id, theme, secondary: [], sentiment: 'negative', productArea: 'Other', labelledAt: '2026-10-21T00:00:00.000Z' })
+const label = (id: string, theme: GoldenLabel['theme'], unsure = false): GoldenLabel =>
+  ({ id, theme, secondary: [], sentiment: unsure ? null : 'negative', unsure, labelledAt: '2026-10-21T00:00:00.000Z' })
 const item = (id: string, split: 'dev' | 'test' = 'dev'): GoldenItem => ({ id, text: `text ${id}`, split, hint: 'other' })
 
 test('toPrediction routes low-confidence or flagged results to review', () => {
@@ -89,4 +89,16 @@ test('the classifier fingerprint changes when any behaviour-relevant part change
   for (const change of [{ systemPrompt: 'sys2' }, { userPromptTemplate: 'u2' }, { schema: '{"a":1}' }, { model: 'm2' }, { reviewThreshold: 0.7 }]) {
     expect(classifierFingerprint({ ...base, ...change })).not.toBe(fp)
   }
+})
+
+test('unsure labels are left out of scoring, not sent to the model, and counted in the report', async () => {
+  const items = [item('a'), item('b')]
+  const labels = new Map([['a', label('a', 'bug_problem')], ['b', label('b', null, true)]])
+  const classify = jest.fn(async () => ({ output: output(), promptTokens: 1, completionTokens: 1, latencyMs: 1 }))
+  const run = await evaluateItems(items, labels, 'dev', classify, 0)
+  expect(classify).toHaveBeenCalledTimes(1)
+  expect(run.pairs.map((p) => p.id)).toEqual(['a'])
+  expect(run.unsureExcluded).toBe(1)
+  const md = renderMarkdown(buildReport({ date: '2026-10-22', split: 'dev', model: 'm', promptVersion: 'v' }, run))
+  expect(md).toContain('marked unsure (excluded): 1')
 })
