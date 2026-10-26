@@ -36,6 +36,18 @@ describe('classification contract', () => {
     expect(createCompletion).not.toHaveBeenCalled()
   })
 
+  it('files too-short feedback under the fallback product area, not the first listed area', async () => {
+    const result = await classifyFeedback('feedback-1', 'ok see attached', ['Dashboard', 'Billing', 'General/other'])
+    expect(result.output.product_area).toBe('General/other')
+    expect(result.output.requires_human_review).toBe(true)
+    expect(createCompletion).not.toHaveBeenCalled()
+  })
+
+  it('files too-short feedback under Other when no fallback product area is configured', async () => {
+    const result = await classifyFeedback('feedback-1', 'ok see attached', ['Dashboard', 'Billing'])
+    expect(result.output.product_area).toBe('Other')
+  })
+
   it('requires review when the bounded request omits part of the original feedback', async () => {
     createCompletion.mockResolvedValue({
       model: 'test-model', choices: [{ message: { content: JSON.stringify({
@@ -119,6 +131,9 @@ describe('classification contract', () => {
     )
     expect(prompt).toContain('Missing actionable intent or necessary context requires human review')
     expect(prompt).toContain('A required vendor questionnaire is administrative other')
+    expect(prompt).toContain(
+      'Requests for compliance or procurement documents (SOC 2 reports, security questionnaires, DPAs) are administrative other',
+    )
   })
 
   it('normalizes a generic Other product area to the provided fallback label', async () => {

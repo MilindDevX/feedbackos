@@ -31,6 +31,7 @@ BOUNDARY RULES:
 - Implicit evidence of satisfaction or realized product value is praise.
 - Administrative or procurement statements without product feedback are other.
 - A required vendor questionnaire is administrative other unless it asks how to use the product.
+- Requests for compliance or procurement documents (SOC 2 reports, security questionnaires, DPAs) are administrative other, not question_support, even when worded as a request.
 - Pricing, onboarding, performance, and similar topics are product areas, not themes.
 
 SENTIMENT:

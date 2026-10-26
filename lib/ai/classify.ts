@@ -22,6 +22,8 @@ export async function classifyFeedback(
   productAreas: string[],
   request: PreparedClassificationRequest | null = prepareClassificationRequest(rawText, productAreas)
 ): Promise<ClassificationResult> {
+  const fallbackProductArea = productAreas.find((area) => area.toLowerCase().includes('other'))
+
   // Short text guard: skip LLM for very short inputs
   const wordCount = rawText.trim().split(/\s+/).length
   if (wordCount < 5 || !request) {
@@ -29,7 +31,7 @@ export async function classifyFeedback(
       theme: 'other',
       secondary_themes: [],
       sentiment: 'neutral',
-      product_area: productAreas[0] || 'Other',
+      product_area: fallbackProductArea ?? 'Other',
       confidence: 0.3,
       summary: request ? 'Feedback too short to classify reliably' : 'Product area configuration exceeds the AI request budget',
       requires_human_review: true,
@@ -81,7 +83,6 @@ export async function classifyFeedback(
   const parsed = JSON.parse(rawContent)
   const validated = ClassificationOutputSchema.parse(parsed)
   if (request.truncated) validated.requires_human_review = true
-  const fallbackProductArea = productAreas.find((area) => area.toLowerCase().includes('other'))
 
   if (validated.product_area === 'Other' && fallbackProductArea) {
     validated.product_area = fallbackProductArea
