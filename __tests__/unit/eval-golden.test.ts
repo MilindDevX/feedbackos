@@ -5,7 +5,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EVALUATION_CATEGORIES } from '@/lib/ai/evaluation'
-import { assignSplits, cleanReviewText, dedupe, keywordHint, readJsonl, stratifiedSample, writeJsonl } from '@/lib/eval/golden'
+import { assignSplits, cleanReviewText, dedupe, keywordHint, readJsonl, replaceExcluded, stratifiedSample, writeJsonl } from '@/lib/eval/golden'
 
 test('cleanReviewText strips emails, urls and handles', () => {
   expect(cleanReviewText('Mail me at a.b@x.com or see https://x.io @bob  great app'))
@@ -51,6 +51,23 @@ test('stratifiedSample does not crash when a theme is short', () => {
   const sample = stratifiedSample(pool, 20, 200, 1)
   expect(sample).toHaveLength(200)
   expect(sample.some((x) => x.id === 'q')).toBe(true)
+})
+
+test('replaceExcluded swaps only the withdrawn reviews, keeps their place and hint, and is deterministic', () => {
+  const pool = Array.from({ length: 600 }, (_, i) => ({ id: `${i}`, hint: EVALUATION_CATEGORIES[i % 6] }))
+  const sample = stratifiedSample(pool, 20, 200, 20261021)
+  const withdrawn = new Set([sample[5].id, sample[120].id])
+  const fixed = replaceExcluded(sample, pool, withdrawn, 20261021, (item) => item.id !== '599')
+  expect(fixed).toHaveLength(200)
+  expect(new Set(fixed.map((x) => x.id)).size).toBe(200)
+  fixed.forEach((item, i) => {
+    if (i === 5 || i === 120) {
+      expect(withdrawn.has(item.id)).toBe(false)
+      expect(item.hint).toBe(sample[i].hint)
+      expect(item.id).not.toBe('599')
+    } else expect(item).toBe(sample[i])
+  })
+  expect(replaceExcluded(sample, pool, withdrawn, 20261021, (item) => item.id !== '599')).toEqual(fixed)
 })
 
 test('assignSplits gives exactly 50 dev and the rest test, deterministically', () => {

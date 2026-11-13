@@ -7,7 +7,7 @@ import { createReadStream, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import Papa from 'papaparse'
 import { EVALUATION_CATEGORIES } from '../../lib/ai/evaluation'
-import { assignSplits, cleanReviewText, dedupe, keywordHint, stratifiedSample, writeJsonl } from '../../lib/eval/golden'
+import { assignSplits, cleanReviewText, dedupe, keywordHint, replaceExcluded, stratifiedSample, writeJsonl } from '../../lib/eval/golden'
 
 const EXPECTED_MD5 = '6a2237fc3eeed4990805285985e7f288'
 const SEED = 20261021
@@ -15,6 +15,17 @@ const POOLS = [
   { path: 'data/02_cleaned_review_candidates/en_explanation/2024-12-20T19-55-42.075Z_en_explanation_reviews_cleaned.csv', maxRows: Infinity },
   { path: 'data/02_cleaned_review_candidates/en_no_explanation_needs/2024-12-20T19-55-42.075Z_en_no_explanation_needs_reviews_cleaned.csv', maxRows: 150_000 },
 ]
+
+// Reviews withdrawn after sampling because they end with the writer's name ("Respectfully, Kirsten", "Yours truly
+// -Zhirkov", "From Cara/Cindy"). They are swapped one for one so the other 197 items, and their labels, do not move.
+const WITHDRAWN = new Set([
+  'Google Play Store:com.fng.foxnation:ed0808f9-1732-4811-bc42-48bf476cf4f4',
+  'Google Play Store:com.adidas.app:7ae3f469-af39-4e30-bc65-dd120a5a8d7c',
+  'Google Play Store:com.ventogames.findthecat:0b320c93-d379-4e58-8907-27e326d1d4df',
+])
+// Replacements must not end with a sign-off or a name; this is stricter than the pool filter, which cannot change
+// without reshuffling the whole sample.
+const SIGNED = /\b(respectfully|yours truly|yours|cheers|from|love|thanks,?)\s*[,-]?\s*-?[A-Z][a-z]+(\/[A-Z][a-z]+)?\.?\s*$|[-–—]\s*[A-Z][a-z]+\.?\s*$/
 
 type Row = Record<string, string>
 
@@ -57,7 +68,7 @@ async function main() {
   const seenIds = new Set<string>()
   const unique = dedupe(pools.flat().filter((item) => !seenIds.has(item.id) && seenIds.add(item.id)))
   const hinted = unique.map((item) => ({ ...item, hint: keywordHint(item.text) }))
-  const sample = stratifiedSample(hinted, 20, 200, SEED)
+  const sample = replaceExcluded(stratifiedSample(hinted, 20, 200, SEED), hinted, WITHDRAWN, SEED, (item) => !SIGNED.test(item.text))
   const items = assignSplits(sample, 50, SEED).map(({ id, text, split, hint }) => ({ id, text, split, hint }))
 
   const dir = join(process.cwd(), 'evaluation', 'golden')
@@ -71,6 +82,7 @@ async function main() {
     builtAt: new Date().toISOString(),
     poolSizes: pools.map((pool, i) => ({ file: POOLS[i].path.split('/').pop(), usableReviews: pool.length })),
     afterDedupe: unique.length,
+    withdrawnAndReplaced: [...WITHDRAWN],
     total: items.length,
     splits: { dev: count('split', 'dev'), test: count('split', 'test') },
     keywordHints: Object.fromEntries(EVALUATION_CATEGORIES.map((theme) => [theme, count('hint', theme)])),

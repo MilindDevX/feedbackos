@@ -3,7 +3,7 @@
   "licence": "CC BY 4.0",
   "md5": "6a2237fc3eeed4990805285985e7f288",
   "seed": 20261021,
-  "builtAt": "2026-10-21T09:14:15.170Z",
+  "builtAt": "2026-11-13T09:29:59.464Z",
   "poolSizes": [
     {
       "file": "2024-12-20T19-55-42.075Z_en_explanation_reviews_cleaned.csv",
@@ -15,6 +15,11 @@
     }
   ],
   "afterDedupe": 124549,
+  "withdrawnAndReplaced": [
+    "Google Play Store:com.fng.foxnation:ed0808f9-1732-4811-bc42-48bf476cf4f4",
+    "Google Play Store:com.adidas.app:7ae3f469-af39-4e30-bc65-dd120a5a8d7c",
+    "Google Play Store:com.ventogames.findthecat:0b320c93-d379-4e58-8907-27e326d1d4df"
+  ],
   "total": 200,
   "splits": {
     "dev": 50,

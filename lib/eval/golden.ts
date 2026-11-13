@@ -81,6 +81,21 @@ export function stratifiedSample<T extends { hint: Theme6 }>(items: T[], perThem
   return shuffled.filter((item) => chosen.has(item)).slice(0, total)
 }
 
+// Swaps reviews that had to be withdrawn after sampling for the next unused review with the same hint in the
+// seeded order. Every other item keeps its place, so labels already given to them stay valid.
+export function replaceExcluded<T extends { id: string; hint: Theme6 }>(
+  sample: T[], pool: T[], excluded: ReadonlySet<string>, seed: number, acceptable: (item: T) => boolean = () => true,
+): T[] {
+  const taken = new Set(sample.map((item) => item.id))
+  const spares = shuffle(pool, seed).filter((item) => !taken.has(item.id) && !excluded.has(item.id) && acceptable(item))
+  return sample.map((item) => {
+    if (!excluded.has(item.id)) return item
+    const index = spares.findIndex((spare) => spare.hint === item.hint)
+    if (index < 0) throw new Error(`No replacement left for ${item.id}`)
+    return spares.splice(index, 1)[0]
+  })
+}
+
 export function assignSplits<T>(items: T[], devCount: number, seed: number): (T & { split: 'dev' | 'test' })[] {
   const dev = new Set(shuffle(items.map((_, index) => index), seed).slice(0, devCount))
   return items.map((item, index) => ({ ...item, split: dev.has(index) ? 'dev' : 'test' }))

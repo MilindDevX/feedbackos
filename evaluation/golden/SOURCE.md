@@ -18,7 +18,8 @@
 - Removed rows the authors flagged as low quality (`is_bad_quality_rule_based` or `is_bad_quality_model_based`).
 - Removed email addresses, URLs and @handles from the text, collapsed whitespace, and dropped very short or non-English reviews.
 - Dropped reviews that identify their author (self-introductions such as "my name", sign-offs such as "Sincerely", trailing signatures such as "- John"). The final 200 were also scanned for name patterns ("I'm <Name>", quoted names, trailing name pairs); the only hit was a false positive ("I'm Force to", meaning "forced").
-- Sampled about 200 reviews (seed `20261021`), stratified by a keyword heuristic so each FeedbackOS theme is represented, and added our own labels (theme, secondary themes, sentiment, product area) from a blind human labelling pass. The original dataset's explanation-need labels are not used.
+- After sampling, three reviews were found to end with the writer's name ("Respectfully, K…", "Yours truly -Z…", "From C…/C…"), which the filter above had missed. They were withdrawn and each was swapped for the next unused review with the same keyword hint in the same seeded order; the other 197 items did not move. The withdrawn IDs are listed in `scripts/golden/build.ts` and `manifest.json`. All three were in the test split and had no human label yet.
+- Sampled about 200 reviews (seed `20261021`), stratified by a keyword heuristic so each FeedbackOS theme is represented, and added our own labels (theme, secondary themes, sentiment) from a human labelling pass (see `evaluation/README.md` for how the labels were made). The original dataset's explanation-need labels are not used.
 
 ## Attribution
 
