@@ -119,6 +119,9 @@ The golden set is about 200 real, openly licensed app reviews (source and licenc
 
 1. Build the set: `pnpm golden:build` writes `golden/items.jsonl` and `golden/manifest.json`.
 2. Label: run `next dev` with `LOCAL_TEST_MODE=1` and open `http://localhost:3000/eval/label` (keys 1–6 theme, Shift+1–6 "also mentions", P/N/U/M sentiment, Enter to save, ? for unsure). The page shows the same decision rules the classifier follows. Product area is not labelled: these are consumer-app reviews and product area is not scored. Reviews marked unsure are kept but excluded from the scores, and each report states how many. Labels append to `golden/labels.csv`; it resumes where you stopped.
-3. Measure: `node --env-file=.env --import tsx scripts/eval-golden.ts --split=dev --delay-ms=9000`. The locked split also needs `--allow-locked-test`.
+3. Check progress: `pnpm eval:golden:check` prints how many items of each split are labelled. It makes no model calls.
+4. Measure: `pnpm eval:golden:dev` for the dev split, then `pnpm eval:golden:test` once for the locked split. Each waits 9 seconds between items (`--delay-ms` changes that) to stay inside the free model's rate limit, so 50 items take about 8 minutes and 150 about 25.
+
+**Review mode.** `golden/labels-draft.csv` holds a label for every item drafted by an AI assistant (a different model from the classifier, working without the classifier's output or the sampling hint). Opening the page with `?drafts=1` pre-fills that draft for Milind to accept or correct, and marks the drafts the assistant was least sure about. A draft is never scored: only labels saved through the page reach `golden/labels.csv`. Labels made this way are AI-drafted and human-reviewed, not blind, and any write-up must say so.
 
 Each run writes `reports/<date>-golden-<split>.json` (every prediction and timing) and `.md` (per-theme precision, recall and F1, confusion matrix, sentiment accuracy, hidden-praise recall, review routing, latency and tokens). Failed model calls count as wrong answers, never dropped. Quote numbers only from these reports.

@@ -92,6 +92,17 @@ describe('/api/eval/labels', () => {
     expect(second.done).toBe(1)
   })
 
+  it('shows the AI draft for the next item only when review mode asks for it', async () => {
+    const dir = workspace()
+    writeFileSync(join(dir, 'labels-draft.csv'), 'id,theme,secondary,sentiment,unsure,labelledAt,check\n"a","bug_problem","praise","mixed","false","2026-11-12T00:00:00.000Z","true"\n')
+    const blind = await (await GET(req())).json()
+    expect(blind.draft).toBeUndefined()
+    const review = await (await GET(new NextRequest('http://localhost:3000/api/eval/labels?drafts=1'))).json()
+    expect(review.draft).toEqual({ theme: 'bug_problem', secondary: ['praise'], sentiment: 'mixed', unsure: false, check: true })
+    // A draft is never counted as a label.
+    expect(review.done).toBe(0)
+  })
+
   it('rejects an invalid label and a label for an unknown item', async () => {
     workspace()
     expect((await POST(req('POST', { id: 'a', theme: 'nope' }))).status).toBe(422)

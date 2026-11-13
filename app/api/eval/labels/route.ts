@@ -1,10 +1,10 @@
 // ABOUTME: Local-only API for the blind labelling page; 404 unless LOCAL_TEST_MODE runs under next dev on loopback.
-// ABOUTME: Serves review text only: never the sampling hint or any model prediction, so labels stay unbiased.
+// ABOUTME: Never serves the sampling hint or the classifier's prediction. An AI-drafted label is sent only in review mode (?drafts=1).
 import { join } from 'node:path'
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { readJsonl, type GoldenItem } from '@/lib/eval/golden'
-import { appendLabel, nextUnlabelled, parseLabel, readLabels } from '@/lib/eval/labels'
+import { appendLabel, nextUnlabelled, parseLabel, readDrafts, readLabels } from '@/lib/eval/labels'
 import { isLocalHost, localTestMode } from '@/lib/local-test-mode'
 
 export const runtime = 'nodejs'
@@ -25,7 +25,10 @@ export async function GET(request: NextRequest) {
   const labels = readLabels(labelsPath)
   const next = nextUnlabelled(items, labels)
   const done = items.filter((item) => labels.has(item.id)).length
-  return NextResponse.json({ item: next ? { id: next.id, text: next.text } : null, done, total: items.length })
+  const draft = next && request.nextUrl.searchParams.get('drafts') === '1'
+    ? readDrafts(join(goldenDir(), 'labels-draft.csv')).get(next.id)
+    : undefined
+  return NextResponse.json({ item: next ? { id: next.id, text: next.text } : null, done, total: items.length, draft })
 }
 
 // A website open in the same browser can POST to localhost without a CORS preflight (text/plain body). Requiring a

@@ -75,6 +75,20 @@ export function readLabels(path: string): Map<string, GoldenLabel> {
   return labels
 }
 
+// AI-drafted labels waiting for Milind's review. They live in their own file and are never scored;
+// `check` marks the ones the drafter was least sure about.
+export type DraftLabel = Pick<GoldenLabel, 'theme' | 'secondary' | 'sentiment' | 'unsure'> & { check: boolean }
+
+export function readDrafts(path: string): Map<string, DraftLabel> {
+  const drafts = new Map<string, DraftLabel>()
+  if (!existsSync(path)) return drafts
+  const checks = Papa.parse<Record<string, string>>(readFileSync(path, 'utf8'), { header: true, skipEmptyLines: true }).data
+  parseRows(path).forEach(({ id, theme, secondary, sentiment, unsure }, index) => {
+    drafts.set(id, { theme, secondary, sentiment, unsure, check: checks[index].check === 'true' })
+  })
+  return drafts
+}
+
 export function nextUnlabelled(items: GoldenItem[], labels: Map<string, GoldenLabel>): GoldenItem | null {
   return items.find((item) => !labels.has(item.id)) ?? null
 }

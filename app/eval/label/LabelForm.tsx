@@ -7,6 +7,7 @@ import { cn, formatTheme } from '@/lib/utils'
 
 type Theme = (typeof EVALUATION_CATEGORIES)[number]
 type Item = { id: string; text: string }
+type Draft = { theme: Theme | null; secondary: Theme[]; sentiment: string | null; unsure: boolean; check: boolean }
 const SENTIMENTS = [
   { value: 'positive', key: 'p' }, { value: 'negative', key: 'n' }, { value: 'neutral', key: 'u' }, { value: 'mixed', key: 'm' },
 ] as const
@@ -20,12 +21,17 @@ export default function LabelForm() {
   const [previous, setPrevious] = useState<Item | null>(null)
   const [message, setMessage] = useState('')
   const [tick, setTick] = useState(0)
+  const [draft, setDraft] = useState<Draft | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/eval/labels').then((r) => r.json()).then((json) => {
+    // Review mode (?drafts=1) pre-fills an AI-drafted label to accept or correct; the default page stays blind.
+    const reviewing = new URLSearchParams(window.location.search).get('drafts') === '1'
+    fetch(`/api/eval/labels${reviewing ? '?drafts=1' : ''}`).then((r) => r.json()).then((json) => {
       if (cancelled) return
       setItem(json.item)
+      setDraft(json.draft ?? null)
+      if (json.draft) { setTheme(json.draft.theme); setSecondary(json.draft.secondary); setSentiment(json.draft.sentiment) }
       setProgress({ done: json.done, total: json.total })
     })
     return () => { cancelled = true }
@@ -51,7 +57,7 @@ export default function LabelForm() {
   }, [item, theme, secondary, sentiment])
 
   // Undo shows the last item again; saving it appends a newer label that replaces the old one.
-  const undo = () => { if (previous) { setItem(previous); setPrevious(null); reset() } }
+  const undo = () => { if (previous) { setItem(previous); setPrevious(null); setDraft(null); reset() } }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -95,6 +101,13 @@ export default function LabelForm() {
         <p className="mt-10 text-ink">{progress.total ? 'All items are labelled. Thank you!' : 'Loading…'}</p>
       ) : (
         <div className="mt-8 space-y-6">
+          {draft && (
+            <p role="status" className={cn('rounded-lg border px-4 py-2 text-sm', draft.check ? 'border-danger text-danger' : 'border-line text-ink-2')}>
+              {draft.unsure ? 'AI draft: could not tell what this review means. Label it yourself or press ? to keep it unsure.'
+                : draft.check ? 'AI draft, low confidence: read this one carefully before accepting.'
+                : 'AI draft (not the classifier). Press Enter to accept, or change anything that is wrong.'}
+            </p>
+          )}
           <blockquote className="rounded-xl border border-line bg-surface p-5 text-lg leading-relaxed text-ink whitespace-pre-wrap">{item.text}</blockquote>
 
           <fieldset>
